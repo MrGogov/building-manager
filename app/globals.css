@@ -10,3 +10,10 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
 .yellowChoice{background:#fff4bf;color:#735f13}.redChoice{background:#fde5e3;color:#8e3934}.check{display:flex;align-items:center;gap:8px;font-size:14px}.check input{width:auto}
 .feeBadge{padding:6px 9px;border-radius:999px;font-size:11px;font-weight:900;text-transform:uppercase}.feePaid{background:#e6f5e8;color:#2d6b37}.feePending{background:#fff4bf;color:#735f13}.feeOverdue{background:#fde5e3;color:#8e3934}.periodRow{align-items:end}.periodRow>div{flex:1}
 @media(max-width:620px){.grid2{grid-template-columns:1fr}.shell{padding:14px}.row{align-items:flex-start}.actions,.periodRow,.apt{flex-wrap:wrap}.apt button{width:100%}}
+.monthlyFeeCard{transition:box-shadow .2s ease,border-color .2s ease}
+.feeGlowYellow{border-color:#e9c65b;box-shadow:0 0 0 3px rgba(233,198,91,.20),0 0 22px rgba(233,198,91,.28)}
+.feeGlowRed{border-color:#df6d67;box-shadow:0 0 0 3px rgba(223,109,103,.18),0 0 24px rgba(223,109,103,.30)}
+.feeGlowPaid{border-color:#b9dcbc}
+.feeAlertLabel{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:#fff4bf;color:#735f13}
+.feeGlowRed .feeAlertLabel{background:#fde5e3;color:#8e3934}
+.feeGlowPaid .feeAlertLabel{background:#e6f5e8;color:#2d6b37}
