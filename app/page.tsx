@@ -359,6 +359,13 @@ export default function Home(){
 
   const pendingFees=useMemo(()=>fees.filter(f=>effectiveFeeStatus(f)!=="paid"),[fees]);
 
+  const selectedApartmentCommunity=community.find((r:any)=>r.apartment_id===selectedApartmentId);
+  const selectedApartmentIssues=(managerData?.issues||[]).filter((i:any)=>i.apartment_id===selectedApartmentId);
+  const selectedApartmentFees=fees.filter((f:any)=>f.apartment_id===selectedApartmentId);
+  const selectedApartmentOutstanding=selectedApartmentFees.find((f:any)=>effectiveFeeStatus(f)!=="paid");
+  const selectedApartmentResolvedCount=selectedApartmentIssues.filter((i:any)=>i.status==="resolved").length;
+  const selectedApartmentActiveCount=selectedApartmentIssues.filter((i:any)=>i.status!=="resolved").length;
+
   const managerIssues=managerData?.issues||[];
   const filteredManagerIssues=managerIssues.filter((i:any)=>{
     if(issueFilter==="yellow")return i.severity==="yellow"&&i.status!=="resolved";
@@ -548,11 +555,17 @@ export default function Home(){
     </div>
 
     <div className="card">
-      <div className="row"><div><h2>💶 Monthly Fees</h2><p>Set apartment fees and generate the selected month.</p></div><span className="tag">{pendingFees.length} pending</span></div>
-      <div className="row periodRow"><div><label>Fee month</label><input type="month" value={currentPeriod} onChange={e=>setCurrentPeriod(e.target.value)}/></div><button className="primary" onClick={generateFees}>Generate Monthly Fees</button></div>
-
-      <h3>Apartment fee settings</h3>
-      <p className="muted">Choose one apartment, then edit only that apartment's fee settings.</p>
+      <div className="row">
+        <div>
+          <h2>🏠 Apartment Overview</h2>
+          <div className="muted">Tenant, fees and issue history for one apartment.</div>
+        </div>
+        {selectedApartmentCommunity
+          ? <span className={`feeBadge ${statusClass(selectedApartmentCommunity.status_color)==="residentRed"?"feeOverdue":statusClass(selectedApartmentCommunity.status_color)==="residentYellow"?"feePending":"feePaid"}`}>
+              {selectedApartmentCommunity.status_color}
+            </span>
+          : <span className="tag">VACANT</span>}
+      </div>
 
       <label>Apartment</label>
       <select
@@ -572,6 +585,63 @@ export default function Home(){
           <option key={a.id} value={a.id}>Apartment {a.apartment_number}</option>
         )}
       </select>
+
+      {selectedApartment&&<div className="apartmentSummaryGrid">
+        <div className="summaryBox">
+          <div className="muted">Tenant</div>
+          <div className="summaryValue">{selectedApartmentCommunity?.tenant_name||"Vacant"}</div>
+          <div className="muted">{selectedApartmentCommunity?"Active tenant account":"No active tenant"}</div>
+        </div>
+
+        <div className="summaryBox">
+          <div className="muted">Monthly fee</div>
+          <div className="summaryValue">€{Number(selectedApartment.monthly_fee||0).toFixed(2)}</div>
+          <div className="muted">
+            {selectedApartmentOutstanding
+              ? `Due ${new Date(selectedApartmentOutstanding.due_date+"T00:00:00").toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"})}`
+              : "No outstanding fee"}
+          </div>
+        </div>
+
+        <div className="summaryBox">
+          <div className="muted">Active issues</div>
+          <div className="summaryValue">{selectedApartmentActiveCount}</div>
+          <div className="muted">{selectedApartmentResolvedCount} resolved in history</div>
+        </div>
+      </div>}
+
+      {selectedApartmentIssues.length>0&&<>
+        <h3>Apartment issue history</h3>
+        {selectedApartmentIssues.map((i:any)=><div className="issue compactIssue" key={i.id}>
+          <div className="row">
+            <b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b>
+            <span className="tag">{String(i.status).replace("_"," ")}</span>
+          </div>
+          <p>{i.description}</p>
+          {i.callback_requested&&<div className="muted">☎ Callback requested</div>}
+        </div>)}
+      </>}
+
+      {selectedApartmentFees.length>0&&<>
+        <h3>Fee history</h3>
+        {selectedApartmentFees.slice(0,6).map((f:any)=><div className="feeHistoryRow" key={f.id}>
+          <div>
+            <b>{new Date(f.period_month+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b>
+            <div className="muted">Due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div>
+          </div>
+          <div className="row">
+            <b>€{Number(f.amount).toFixed(2)}</b>
+            <span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span>
+          </div>
+        </div>)}
+      </>}
+    </div>
+
+    <div className="card">
+      <div className="row"><div><h2>💶 Monthly Fees</h2><p>Fees advance automatically to the next due date when marked paid.</p></div><span className="tag">{pendingFees.length} pending</span></div>
+
+      <h3>Selected apartment fee settings</h3>
+      <p className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. Change the apartment from Apartment Overview above.</p>
 
       {selectedApartment&&<div className="selectedApartmentEditor">
         <div className="grid2">

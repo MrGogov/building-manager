@@ -78,3 +78,14 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
   .issueFilterGrid{grid-template-columns:1fr 1fr}
   .headerActions{gap:6px}
 }
+
+.apartmentSummaryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.summaryBox{padding:16px;border:1px solid var(--line);border-radius:16px;background:#fbfcfa}
+.summaryValue{font-size:21px;font-weight:900;margin:4px 0}
+.compactIssue p{margin:8px 0}
+.feeHistoryRow{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.feeHistoryRow:last-child{border-bottom:0}
+@media(max-width:700px){
+  .apartmentSummaryGrid{grid-template-columns:1fr}
+  .feeHistoryRow{align-items:flex-start;flex-wrap:wrap}
+}
