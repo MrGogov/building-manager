@@ -638,10 +638,10 @@ export default function Home(){
     </div>
 
     <div className="card">
-      <div className="row"><div><h2>💶 Monthly Fees</h2><p>Fees advance automatically to the next due date when marked paid.</p></div><span className="tag">{pendingFees.length} pending</span></div>
+      <div className="row"><div><h2>💶 Monthly Fees</h2><p>Choose an apartment above to edit its recurring fee settings. The next due date advances automatically after payment.</p></div><span className="tag">{pendingFees.length} pending</span></div>
 
       <h3>Selected apartment fee settings</h3>
-      <p className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. Change the apartment from Apartment Overview above.</p>
+      <p className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. Use the Apartment Overview dropdown above to switch apartments.</p>
 
       {selectedApartment&&<div className="selectedApartmentEditor">
         <div className="grid2">
