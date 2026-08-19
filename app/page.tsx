@@ -10,6 +10,12 @@ export default function Home(){
   const[role,setRole]=useState<Role>(null);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState("");
+  const[msg,setMsg]=useState("");
+
+  const[authMode,setAuthMode]=useState<"login"|"signup">("login");
+  const[email,setEmail]=useState("");
+  const[password,setPassword]=useState("");
+  const[fullName,setFullName]=useState("");
 
   const[managerData,setManagerData]=useState<any>(null);
   const[tenantData,setTenantData]=useState<any>(null);
@@ -18,32 +24,59 @@ export default function Home(){
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState("");
   const[callback,setCallback]=useState(false);
-  const[msg,setMsg]=useState("");
 
   useEffect(()=>{
     s.auth.getSession().then(({data})=>{
       if(data.session){
         setSession(data.session);
         bootstrap(data.session.user.id);
-      } else setLoading(false);
+      }else setLoading(false);
     });
     const {data:{subscription}}=s.auth.onAuthStateChange((_e,ss)=>{
       setSession(ss);
       if(ss) bootstrap(ss.user.id);
-      else {setRole(null);setLoading(false)}
+      else{
+        setRole(null);setManagerData(null);setTenantData(null);setIssues([]);setLoading(false);
+      }
     });
     return()=>subscription.unsubscribe();
   },[]);
+
+  async function signIn(){
+    setError("");setMsg("");
+    if(!email||!password){setError("Enter your email and password.");return}
+    const {data,error}=await s.auth.signInWithPassword({email,password});
+    if(error){setError(error.message);return}
+    if(data.user) await bootstrap(data.user.id);
+  }
+
+  async function signUpManager(){
+    setError("");setMsg("");
+    if(!fullName||!email||password.length<8){
+      setError("Enter your name, email and a password of at least 8 characters.");
+      return;
+    }
+    const {data,error}=await s.auth.signUp({
+      email,password,
+      options:{data:{full_name:fullName,role:"company_admin"}}
+    });
+    if(error){setError(error.message);return}
+    if(data.session&&data.user){
+      setSession(data.session);
+      await bootstrap(data.user.id);
+    }else{
+      setMsg("Account created. Confirm your email if confirmations are enabled, then log in.");
+      setAuthMode("login");
+    }
+  }
 
   async function bootstrap(uid:string){
     setLoading(true);setError("");
     const {data:p,error:pe}=await s.from("profiles").select("id,full_name,email,role").eq("id",uid).single();
     if(pe){setError(pe.message);setLoading(false);return}
     setRole(p.role);
-
     if(p.role==="tenant") await loadTenant(uid,p);
     else await loadManager(uid,p);
-
     setLoading(false);
   }
 
@@ -55,16 +88,19 @@ export default function Home(){
     if(!at){setError("No active apartment is linked to this tenant.");return}
     const apt:any=at.apartments;
     setTenantData({profile,apartment:apt,building:apt.buildings});
-    const {data:i}=await s.from("issues")
+    const {data:i,error:ie}=await s.from("issues")
       .select("id,severity,description,callback_requested,status,created_at,acknowledged_at,resolved_at")
       .eq("tenant_id",uid).order("created_at",{ascending:false});
+    if(ie){setError(ie.message);return}
     setIssues(i||[]);
   }
 
   async function loadManager(uid:string, profile:any){
-    const {data:m}=await s.from("company_members").select("company_id").eq("user_id",uid).limit(1);
+    const {data:m,error:me}=await s.from("company_members").select("company_id").eq("user_id",uid).limit(1);
+    if(me){setError(me.message);return}
     if(!m?.[0]){setManagerData({profile,buildings:[],apartments:[],issues:[]});return}
-    const {data:b}=await s.from("buildings").select("id,name,address,total_apartments").eq("company_id",m[0].company_id);
+    const {data:b,error:be}=await s.from("buildings").select("id,name,address,total_apartments").eq("company_id",m[0].company_id);
+    if(be){setError(be.message);return}
     let aps:any[]=[]; let allIssues:any[]=[];
     if(b?.[0]){
       const {data:a}=await s.from("apartments").select("id,apartment_number").eq("building_id",b[0].id).order("apartment_number");
@@ -106,13 +142,38 @@ export default function Home(){
   }
 
   if(loading)return <main className="shell"><div className="card"><h1>Loading Building Manager…</h1></div></main>;
-  if(!session)return <main className="shell"><div className="card"><h1>🏠 Building Manager</h1><p>Please sign in.</p></div></main>;
+
+  if(!session)return <main className="shell">
+    <div className="card authCard">
+      <h1>🏠 Building Manager</h1>
+      <p>{authMode==="login"?"Sign in to continue.":"Create a manager account."}</p>
+      {error&&<div className="notice error">{error}</div>}
+      {msg&&<div className="notice success">{msg}</div>}
+      {authMode==="signup"&&<>
+        <label>Full name</label>
+        <input value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Your name"/>
+      </>}
+      <label>Email</label>
+      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/>
+      <label>Password</label>
+      <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters"/>
+      <button className="primary full" onClick={authMode==="login"?signIn:signUpManager}>
+        {authMode==="login"?"Log in":"Create manager account"}
+      </button>
+      <button className="secondary full" onClick={()=>{setAuthMode(authMode==="login"?"signup":"login");setError("");setMsg("")}}>
+        {authMode==="login"?"Create a manager account":"Back to login"}
+      </button>
+    </div>
+  </main>;
 
   if(role==="tenant"&&tenantData){
     const active=issues.find(i=>i.status!=="resolved");
     const color=active?.severity==="red"?"#df6d67":active?.severity==="yellow"?"#e9c65b":"#78b77b";
     return <main className="shell">
-      <div className="top"><div><b>🏠 Building Manager</b><div className="muted">{tenantData.building.name} • Apartment {tenantData.apartment.apartment_number}</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
+      <div className="top">
+        <div><b>🏠 Building Manager</b><div className="muted">{tenantData.building.name} • Apartment {tenantData.apartment.apartment_number}</div></div>
+        <button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button>
+      </div>
       {error&&<div className="notice error">{error}</div>}
       {msg&&<div className="notice success">{msg}</div>}
 
@@ -135,7 +196,7 @@ export default function Home(){
       <div className="card">
         <div className="row"><h2>My Issues</h2><span className="tag">{issues.length}</span></div>
         {issues.length===0?<p>No issues submitted yet.</p>:issues.map(i=><div className="issue" key={i.id}>
-          <div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{i.status.replace("_"," ")}</span></div>
+          <div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div>
           <p>{i.description}</p>
           {i.callback_requested&&<div className="muted">☎ Callback requested</div>}
           <div className="muted">{new Date(i.created_at).toLocaleString()}</div>
@@ -163,14 +224,25 @@ export default function Home(){
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 Building Manager</b><div className="muted">{managerData?.profile?.full_name}</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
+    <div className="top">
+      <div><b>🏠 Building Manager</b><div className="muted">{managerData?.profile?.full_name}</div></div>
+      <button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button>
+    </div>
     {error&&<div className="notice error">{error}</div>}
     {msg&&<div className="notice success">{msg}</div>}
-    <div className="card"><h2>Manager Dashboard</h2><p>{managerData?.buildings?.[0]?.name||"No building"}</p></div>
+
+    <div className="card">
+      <h2>Manager Dashboard</h2>
+      <p>{managerData?.buildings?.[0]?.name||"No building"}</p>
+    </div>
+
     <div className="card">
       <div className="row"><h2>Issues</h2><span className="tag">{managerData?.issues?.length||0}</span></div>
       {(managerData?.issues||[]).length===0?<p>No tenant issues yet.</p>:(managerData.issues||[]).map((i:any)=><div className="issue" key={i.id}>
-        <div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{i.status.replace("_"," ")}</span></div>
+        <div className="row">
+          <b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b>
+          <span className="tag">{String(i.status).replace("_"," ")}</span>
+        </div>
         <p>{i.description}</p>
         {i.callback_requested&&<div className="muted">☎ Callback requested</div>}
         <div className="row" style={{marginTop:10}}>
