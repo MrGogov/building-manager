@@ -67,7 +67,7 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
 
 .headerActions{display:flex;align-items:center;gap:9px}
 .bellButton{position:relative;background:#eef3ef;color:#35533c;width:44px;height:44px;padding:0;border-radius:50%;font-size:18px}
-.bellBadge{position:absolute;right:-3px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#df6d67;color:white;font-size:10px;display:flex;align-items:center;justify-content:center}
+.bellDot{position:absolute;right:3px;top:3px;width:10px;height:10px;border-radius:50%;background:#df6d67;box-shadow:0 0 0 2px #fff}
 .issueFilterGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 10px}
 .filterTile{background:#f5f7f5;color:#365044;border:1px solid var(--line);display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left}
 .filterTile.yellowTile{background:#fff9df}.filterTile.redTile{background:#fdf0ef}.filterTile.filterActive{outline:2px solid #78b77b;outline-offset:1px}

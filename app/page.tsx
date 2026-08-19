@@ -24,7 +24,8 @@ export default function Home(){
   const[avatarUploading,setAvatarUploading]=useState(false);
 
   const[showReport,setShowReport]=useState(false);
-  const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("all");
+  const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
+  const[notificationsSeen,setNotificationsSeen]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
 
@@ -73,6 +74,18 @@ export default function Home(){
     setLoading(false);
   }
 
+  function notificationSeenKey(buildingId:string,uid:string){
+    return `bm_notice_seen_${buildingId}_${uid}`;
+  }
+
+  function markNotificationsSeen(){
+    if(!tenantData||!session)return;
+    const latest=announcements[0]?.id||"none";
+    localStorage.setItem(notificationSeenKey(tenantData.building.id,session.user.id),latest);
+    setNotificationsSeen(true);
+    document.getElementById("tenantNotifications")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
   async function loadTenant(uid:string,profile:any){
     const {data:at,error:ae}=await s.from("apartment_tenants")
       .select("apartment_id,apartments(id,apartment_number,monthly_fee,fee_due_day,building_id,buildings(id,name,address))")
@@ -86,6 +99,9 @@ export default function Home(){
     setIssues(i||[]);
     const {data:n}=await s.from("announcements").select("*").eq("building_id",apt.building_id).order("created_at",{ascending:false});
     setAnnouncements(n||[]);
+    const latestNoticeId=n?.[0]?.id||"none";
+    const seen=typeof window!=="undefined"?localStorage.getItem(notificationSeenKey(apt.building_id,uid)):null;
+    setNotificationsSeen(seen===latestNoticeId);
     const {data:f}=await s.from("fee_records").select("*").eq("apartment_id",apt.id).order("period_month",{ascending:false});
     setFees(f||[]);
 
@@ -345,8 +361,8 @@ export default function Home(){
 
   const managerIssues=managerData?.issues||[];
   const filteredManagerIssues=managerIssues.filter((i:any)=>{
-    if(issueFilter==="yellow")return i.severity==="yellow";
-    if(issueFilter==="red")return i.severity==="red";
+    if(issueFilter==="yellow")return i.severity==="yellow"&&i.status!=="resolved";
+    if(issueFilter==="red")return i.severity==="red"&&i.status!=="resolved";
     if(issueFilter==="active")return i.status!=="resolved";
     if(issueFilter==="resolved")return i.status==="resolved";
     return true;
@@ -373,8 +389,8 @@ export default function Home(){
       <div className="top">
         <div><b>🏠 {tenantData.building.name}</b><div className="muted">Resident Portal • Apartment {tenantData.apartment.apartment_number}</div></div>
         <div className="headerActions">
-          <button className="bellButton" onClick={()=>document.getElementById("tenantNotifications")?.scrollIntoView({behavior:"smooth",block:"start"})} aria-label="Notifications">
-            🔔{announcements.length>0&&<span className="bellBadge">{announcements.length}</span>}
+          <button className="bellButton" onClick={markNotificationsSeen} aria-label="Notifications">
+            🔔{announcements.length>0&&!notificationsSeen&&<span className="bellDot"></span>}
           </button>
           <button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button>
         </div>
@@ -502,7 +518,7 @@ export default function Home(){
     </div>
 
     <div className="card">
-      <div className="row"><div><h2>Issue History</h2><div className="muted">Resolved issues remain here for apartment history.</div></div><span className="tag">{managerIssues.length}</span></div>
+      <div className="row"><div><h2>Issue Dashboard</h2><div className="muted">Active issues are separated from resolved history.</div></div><span className="tag">{managerIssues.length}</span></div>
 
       <div className="issueFilterGrid">
         <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>setIssueFilter("active")}>
@@ -510,11 +526,11 @@ export default function Home(){
           <span>Active</span>
         </button>
         <button className={`filterTile yellowTile ${issueFilter==="yellow"?"filterActive":""}`} onClick={()=>setIssueFilter("yellow")}>
-          <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="yellow").length}</span>
+          <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="yellow"&&i.status!=="resolved").length}</span>
           <span>Yellow</span>
         </button>
         <button className={`filterTile redTile ${issueFilter==="red"?"filterActive":""}`} onClick={()=>setIssueFilter("red")}>
-          <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="red").length}</span>
+          <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="red"&&i.status!=="resolved").length}</span>
           <span>Red</span>
         </button>
         <button className={`filterTile ${issueFilter==="resolved"?"filterActive":""}`} onClick={()=>setIssueFilter("resolved")}>
@@ -525,7 +541,7 @@ export default function Home(){
 
       <div className="filterBar">
         <span className="muted">Showing: {issueFilter}</span>
-        {issueFilter!=="all"&&<button className="linkButton" onClick={()=>setIssueFilter("all")}>Show all</button>}
+        {issueFilter!=="active"&&<button className="linkButton" onClick={()=>setIssueFilter("active")}>Back to active</button>}
       </div>
 
       {filteredManagerIssues.length===0?<p>No issues in this filter.</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
