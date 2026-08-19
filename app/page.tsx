@@ -193,7 +193,7 @@ export default function Home(){
 
       <div className="grid2">
         <div className="card"><div className="muted">Apartment</div><div className="stat">{tenantData.apartment.apartment_number}</div></div>
-        <div className="card"><div className="muted">Monthly fee</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">Due day: {tenantData.apartment.fee_due_day}</div></div>
+        <div className="card"><div className="muted">Monthly fee</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">{latestFee?`Due: ${new Date(latestFee.due_date+"T00:00:00").toLocaleDateString()}`:"Due date appears after the monthly fee is generated"}</div></div>
       </div>
 
       <div className="card">
@@ -205,8 +205,8 @@ export default function Home(){
         </>}
       </div>
 
-      <div className="card"><div className="row"><h2>My Issues</h2><span className="tag">{issues.length}</span></div>
-        {issues.length===0?<p>No issues submitted yet.</p>:issues.map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}</div>)}
+      <div className="card"><div className="row"><h2>My Active Issues</h2><span className="tag">{issues.filter(i=>i.status!=="resolved").length}</span></div>
+        {issues.filter(i=>i.status!=="resolved").length===0?<p>No active issues.</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}</div>)}
       </div>
 
       <div className="card"><div className="row"><h2>🔔 Notifications</h2><span className="tag">{announcements.length}</span></div>
@@ -228,7 +228,7 @@ export default function Home(){
 
     <div className="card"><h2>Manager Dashboard</h2><p>{managerData?.buildings?.[0]?.name||"No building"}</p></div>
 
-    <div className="card"><div className="row"><h2>Issues</h2><span className="tag">{managerData?.issues?.length||0}</span></div>
+    <div className="card"><div className="row"><div><h2>Issue History</h2><div className="muted">Resolved issues remain here for apartment history.</div></div><span className="tag">{managerData?.issues?.length||0}</span></div>
       {(managerData?.issues||[]).length===0?<p>No tenant issues yet.</p>:(managerData.issues||[]).map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
     </div>
 
@@ -237,6 +237,7 @@ export default function Home(){
       <div className="row periodRow"><div><label>Fee month</label><input type="month" value={currentPeriod} onChange={e=>setCurrentPeriod(e.target.value)}/></div><button className="primary" onClick={generateFees}>Generate Monthly Fees</button></div>
 
       <h3>Apartment fee settings</h3>
+      <p className="muted">The day below is only the recurring monthly setting. Generated fee records use and display the full calendar due date.</p>
       {(managerData?.apartments||[]).map((a:any)=><div className="apt" key={a.id}>
         <div><b>Apartment {a.apartment_number}</b><div className="muted">€{Number(a.monthly_fee||0).toFixed(2)} • due day {a.fee_due_day}</div></div>
         <button className="secondary" onClick={()=>{setSelectedApartment(a);setFeeAmount(String(a.monthly_fee||0));setFeeDueDay(String(a.fee_due_day||1))}}>Edit Fee</button>
@@ -264,7 +265,7 @@ export default function Home(){
 
     {selectedApartment&&<div className="modal"><div className="modalcard"><h2>Apartment {selectedApartment.apartment_number} fee</h2>
       <label>Monthly fee (€)</label><input type="number" min="0" step="0.01" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)}/>
-      <label>Due day of month</label><input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
+      <label>Recurring due day each month</label><input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
       <button className="primary full" onClick={saveApartmentFee}>Save Fee Settings</button>
       <button className="secondary full" onClick={()=>setSelectedApartment(null)}>Cancel</button>
     </div></div>}
