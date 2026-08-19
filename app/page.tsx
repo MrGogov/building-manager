@@ -252,13 +252,18 @@ export default function Home(){
             <small>Direct report</small>
           </button>
 
-          <div className="residentRing">
-            {community.map((r:any)=><div className="residentItem" key={r.apartment_id}>
-              <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`Apartment ${r.apartment_number}`}>
-                {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
+          <div className="residentOval">
+            {community.map((r:any,index:number)=>{
+              const angle=(Math.PI*2*index/Math.max(community.length,1))-Math.PI/2;
+              const x=50+43*Math.cos(angle);
+              const y=55+38*Math.sin(angle);
+              return <div className="residentItem ovalItem" key={r.apartment_id} style={{left:`${x}%`,top:`${y}%`}}>
+                <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`Apartment ${r.apartment_number}`}>
+                  {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
+                </div>
+                <div className="residentLabel">Apt {r.apartment_number}</div>
               </div>
-              <div className="residentLabel">Apt {r.apartment_number}</div>
-            </div>)}
+            })}
           </div>
         </div>
 
@@ -310,13 +315,18 @@ export default function Home(){
           <small>{managerData?.buildings?.[0]?.name||""}</small>
         </div>
 
-        <div className="residentRing">
-          {community.map((r:any)=><div className="residentItem" key={r.apartment_id}>
-            <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`${r.tenant_name} • Apartment ${r.apartment_number}`}>
-              {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
+        <div className="residentOval">
+          {community.map((r:any,index:number)=>{
+            const angle=(Math.PI*2*index/Math.max(community.length,1))-Math.PI/2;
+            const x=50+43*Math.cos(angle);
+            const y=55+38*Math.sin(angle);
+            return <div className="residentItem ovalItem" key={r.apartment_id} style={{left:`${x}%`,top:`${y}%`}}>
+              <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`${r.tenant_name} • Apartment ${r.apartment_number}`}>
+                {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
+              </div>
+              <div className="residentLabel">Apt {r.apartment_number}</div>
             </div>
-            <div className="residentLabel">Apt {r.apartment_number}</div>
-          </div>)}
+          })}
         </div>
       </div>
     </div>
