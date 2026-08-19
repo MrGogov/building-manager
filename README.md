@@ -1,2 +1,2 @@
 # Building Manager
-MVP with Supabase authentication and secure tenant invitations.
+Invitation build with Suspense fix for /invite.

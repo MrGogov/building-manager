@@ -5,7 +5,6 @@ import {createClient} from "../lib/supabase-browser";
 export default function Home(){
   const s=createClient();
   const[session,setSession]=useState<any>(null);
-  const[companyId,setCompanyId]=useState<string|null>(null);
   const[buildings,setBuildings]=useState<any[]>([]);
   const[apartments,setApartments]=useState<any[]>([]);
   const[invitations,setInvitations]=useState<any[]>([]);
@@ -19,7 +18,7 @@ export default function Home(){
       if(data.session){setSession(data.session);load(data.session.user.id)}
     });
     const {data:{subscription}}=s.auth.onAuthStateChange((_e,ss)=>{
-      if(ss){setSession(ss);load(ss.user.id)} else {setSession(null);setCompanyId(null)}
+      if(ss){setSession(ss);load(ss.user.id)} else setSession(null)
     });
     return()=>subscription.unsubscribe();
   },[]);
@@ -27,7 +26,6 @@ export default function Home(){
   async function load(uid:string){
     const{data:m}=await s.from("company_members").select("company_id").eq("user_id",uid).limit(1);
     if(!m?.[0])return;
-    setCompanyId(m[0].company_id);
     const{data:b}=await s.from("buildings").select("id,name,address,total_apartments").eq("company_id",m[0].company_id);
     setBuildings(b||[]);
     if(b?.[0]){
@@ -44,20 +42,17 @@ export default function Home(){
     const existing=invitations.find(x=>x.apartment_id===invite.id&&x.status==="pending"&&new Date(x.expires_at)>new Date());
     if(existing){setErr("This apartment already has a pending invitation.");return}
     const{data,error}=await s.from("invitations").insert({
-      building_id:buildings[0].id,
-      apartment_id:invite.id,
-      email:email.trim().toLowerCase(),
-      invited_by:session.user.id
+      building_id:buildings[0].id,apartment_id:invite.id,email:email.trim().toLowerCase(),invited_by:session.user.id
     }).select("id,token,expires_at").single();
     if(error){setErr(error.message);return}
     const url=`${location.origin}/invite?token=${data.token}`;
     await navigator.clipboard?.writeText(url);
     setInvite(null);setEmail("");
-    setMsg(`Invitation created for Apartment ${invite.apartment_number}. The link was copied to your clipboard.`);
+    setMsg(`Invitation created for Apartment ${invite.apartment_number}. Link copied to clipboard.`);
     await load(session.user.id);
   }
 
-  if(!session)return <main className="shell"><div className="card"><h1>🏠 Building Manager</h1><p>Please log in through the existing live app.</p></div></main>;
+  if(!session)return <main className="shell"><div className="card"><h1>🏠 Building Manager</h1><p>Please sign in on the live app.</p></div></main>;
 
   return <main className="shell">
     <div className="top"><b>🏠 Building Manager</b><button className="danger" onClick={()=>s.auth.signOut().then(()=>location.reload())}>Sign out</button></div>
@@ -77,8 +72,7 @@ export default function Home(){
     {invite&&<div className="modal"><div className="modalcard">
       <h2>Invite tenant — Apartment {invite.apartment_number}</h2>
       <p>The invitation is locked to this apartment.</p>
-      <label>Tenant email</label>
-      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tenant@example.com"/>
+      <label>Tenant email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
       <button className="primary full" disabled={!email.trim()} onClick={createInvitation}>Create Invitation</button>
       <button className="secondary full" onClick={()=>setInvite(null)}>Cancel</button>
     </div></div>}
