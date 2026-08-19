@@ -54,3 +54,13 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
   .managerHub{top:14px}
   .residentOval{top:135px;bottom:20px}
 }
+
+.profileRow{align-items:center}
+.profilePhotoWrap{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:96px}
+.profilePhoto{width:72px;height:72px;border-radius:50%;overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;border:3px solid #78b77b;font-weight:900;font-size:20px}
+.profilePhoto img{width:100%;height:100%;object-fit:cover}
+.photoButton{margin:0;background:#edf3ee;color:#35533c;padding:7px 9px;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer;text-align:center}
+.photoButton input{display:none}
+@media(max-width:620px){.profileRow{align-items:center}.profilePhoto{width:64px;height:64px}.profilePhotoWrap{min-width:84px}}
+
+.selectedApartmentEditor{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fbfcfa}

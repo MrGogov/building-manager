@@ -21,6 +21,7 @@ export default function Home(){
   const[announcements,setAnnouncements]=useState<any[]>([]);
   const[fees,setFees]=useState<any[]>([]);
   const[community,setCommunity]=useState<any[]>([]);
+  const[avatarUploading,setAvatarUploading]=useState(false);
 
   const[showReport,setShowReport]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
@@ -32,6 +33,7 @@ export default function Home(){
 
   const[currentPeriod,setCurrentPeriod]=useState(new Date().toISOString().slice(0,7));
   const[selectedApartment,setSelectedApartment]=useState<any>(null);
+  const[selectedApartmentId,setSelectedApartmentId]=useState("");
   const[feeAmount,setFeeAmount]=useState("");
   const[feeDueDay,setFeeDueDay]=useState("1");
 
@@ -63,7 +65,7 @@ export default function Home(){
 
   async function bootstrap(uid:string){
     setLoading(true);setError("");
-    const {data:p,error:pe}=await s.from("profiles").select("id,full_name,email,role").eq("id",uid).single();
+    const {data:p,error:pe}=await s.from("profiles").select("id,full_name,email,role,avatar_url").eq("id",uid).single();
     if(pe){setError(pe.message);setLoading(false);return}
     setRole(p.role);
     if(p.role==="tenant") await loadTenant(uid,p); else await loadManager(uid,p);
@@ -109,6 +111,14 @@ export default function Home(){
     }
     setAnnouncements(notices);setFees(allFees);
     setManagerData({profile,buildings:b||[],apartments:aps,issues:allIssues});
+    if(aps.length){
+      const keep=aps.find((a:any)=>a.id===selectedApartmentId);
+      const chosen=keep||aps[0];
+      setSelectedApartmentId(chosen.id);
+      setSelectedApartment(chosen);
+      setFeeAmount(String(chosen.monthly_fee||0));
+      setFeeDueDay(String(chosen.fee_due_day||1));
+    }
 
     if(b?.[0]){
       const {data:c,error:ce}=await s.rpc("get_building_community_status",{p_building_id:b[0].id});
@@ -153,7 +163,40 @@ export default function Home(){
     if(Number.isNaN(amount)||amount<0||dueDay<1||dueDay>31){setError("Enter a valid fee and due day.");return}
     const {error:e}=await s.from("apartments").update({monthly_fee:amount,fee_due_day:dueDay}).eq("id",selectedApartment.id);
     if(e){setError(e.message);return}
-    setSelectedApartment(null);setMsg("Apartment fee settings updated.");
+
+    const now=new Date();
+    const y=now.getFullYear();
+    const m=now.getMonth();
+    const periodMonth=new Date(y,m,1);
+    const lastDay=new Date(y,m+1,0).getDate();
+    const dueDate=new Date(y,m,Math.min(dueDay,lastDay));
+    const dueIso=`${dueDate.getFullYear()}-${String(dueDate.getMonth()+1).padStart(2,"0")}-${String(dueDate.getDate()).padStart(2,"0")}`;
+    const periodIso=`${periodMonth.getFullYear()}-${String(periodMonth.getMonth()+1).padStart(2,"0")}-01`;
+
+    const {data:existing}=await s.from("fee_records")
+      .select("id,status")
+      .eq("apartment_id",selectedApartment.id)
+      .eq("period_month",periodIso)
+      .maybeSingle();
+
+    if(existing){
+      const patch:any={amount,due_date:dueIso};
+      if(existing.status!=="paid")patch.status=dueDate<new Date(new Date().setHours(0,0,0,0))?"overdue":"pending";
+      const {error:fe}=await s.from("fee_records").update(patch).eq("id",existing.id);
+      if(fe){setError(fe.message);return}
+    }else if(amount>0){
+      const {error:fe}=await s.from("fee_records").insert({
+        building_id:managerData.buildings[0].id,
+        apartment_id:selectedApartment.id,
+        period_month:periodIso,
+        amount,
+        due_date:dueIso,
+        status:dueDate<new Date(new Date().setHours(0,0,0,0))?"overdue":"pending"
+      });
+      if(fe){setError(fe.message);return}
+    }
+
+    setMsg("Apartment fee settings updated.");
     await loadManager(session.user.id,managerData.profile);
   }
 
@@ -173,7 +216,54 @@ export default function Home(){
     await loadManager(session.user.id,managerData.profile);
   }
 
+  async function uploadAvatar(file:File){
+    if(!session||role!=="tenant")return;
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+      setError("Please choose a JPG, PNG or WebP image.");return
+    }
+    if(file.size>2*1024*1024){
+      setError("Profile picture must be smaller than 2 MB.");return
+    }
+
+    setAvatarUploading(true);setError("");setMsg("");
+    const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+    const path=`${session.user.id}/profile.${ext}`;
+
+    const {error:uploadError}=await s.storage.from("avatars").upload(path,file,{
+      upsert:true,
+      contentType:file.type,
+      cacheControl:"3600"
+    });
+    if(uploadError){
+      setError(uploadError.message);setAvatarUploading(false);return
+    }
+
+    const {data:urlData}=s.storage.from("avatars").getPublicUrl(path);
+    const publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
+
+    const {error:profileError}=await s.from("profiles")
+      .update({avatar_url:publicUrl,updated_at:new Date().toISOString()})
+      .eq("id",session.user.id);
+
+    if(profileError){
+      setError(profileError.message);setAvatarUploading(false);return
+    }
+
+    setTenantData({...tenantData,profile:{...tenantData.profile,avatar_url:publicUrl}});
+    setCommunity((prev:any[])=>prev.map(r=>r.tenant_id===session.user.id?{...r,avatar_url:publicUrl}:r));
+    setMsg("Profile picture updated.");
+    setAvatarUploading(false);
+  }
+
   function noticeIcon(type:string){return type==="planned_work"?"🔧":type==="important"?"⚠️":"📣"}
+  function effectiveFeeStatus(f:any){
+    if(!f)return "pending";
+    if(f.status==="paid")return "paid";
+    const today=new Date(); today.setHours(0,0,0,0);
+    const due=new Date(f.due_date+"T00:00:00"); due.setHours(0,0,0,0);
+    return due<today?"overdue":"pending";
+  }
+
   function feeStatusClass(status:string){return status==="paid"?"feePaid":status==="overdue"?"feeOverdue":"feePending"}
 
   function tenantDueInfo(){
@@ -196,8 +286,9 @@ export default function Home(){
     const d=new Date(dueDate); d.setHours(0,0,0,0);
     const days=Math.ceil((d.getTime()-today.getTime())/86400000);
 
-    if(latestFee?.status==="paid") return {dueDate,glow:"feeGlowPaid",label:"Paid"};
-    if(days<0) return {dueDate,glow:"feeGlowRed",label:"Overdue"};
+    if(latestFee&&effectiveFeeStatus(latestFee)==="paid") return {dueDate,glow:"feeGlowPaid",label:"Paid"};
+    if(latestFee&&effectiveFeeStatus(latestFee)==="overdue") return {dueDate,glow:"feeGlowRed",label:"Overdue"};
+    if(!latestFee&&days<0) return {dueDate,glow:"feeGlowRed",label:"Overdue"};
     if(days<=2) return {dueDate,glow:"feeGlowYellow",label:days===0?"Due today":days===1?"Due tomorrow":`Due in ${days} days`};
     return {dueDate,glow:"",label:""};
   }
@@ -210,7 +301,7 @@ export default function Home(){
     return (name||"?").split(/\s+/).filter(Boolean).slice(0,2).map((x:string)=>x[0]?.toUpperCase()).join("")||"?";
   }
 
-  const pendingFees=useMemo(()=>fees.filter(f=>f.status!=="paid"),[fees]);
+  const pendingFees=useMemo(()=>fees.filter(f=>effectiveFeeStatus(f)!=="paid"),[fees]);
 
   if(loading)return <main className="shell"><div className="card"><h1>Loading…</h1></div></main>;
 
@@ -233,7 +324,29 @@ export default function Home(){
       <div className="top"><div><b>🏠 {tenantData.building.name}</b><div className="muted">Resident Portal • Apartment {tenantData.apartment.apartment_number}</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
       {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
 
-      <div className="card"><div className="row"><div><h2>Hello, {tenantData.profile.full_name}</h2><p>{tenantData.building.address}</p></div><div style={{width:56,height:56,borderRadius:"50%",background:color,boxShadow:`0 0 0 7px ${color}33`}}/></div></div>
+      <div className="card"><div className="row profileRow">
+        <div><h2>Hello, {tenantData.profile.full_name}</h2><p>{tenantData.building.address}</p></div>
+        <div className="profilePhotoWrap">
+          <div className="profilePhoto" style={{borderColor:color,boxShadow:`0 0 0 7px ${color}33`}}>
+            {tenantData.profile.avatar_url
+              ? <img src={tenantData.profile.avatar_url} alt="Your profile"/>
+              : <span>{initials(tenantData.profile.full_name)}</span>}
+          </div>
+          <label className="photoButton">
+            {avatarUploading?"Uploading…":"Change photo"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={avatarUploading}
+              onChange={e=>{
+                const file=e.target.files?.[0];
+                if(file)uploadAvatar(file);
+                e.currentTarget.value="";
+              }}
+            />
+          </label>
+        </div>
+      </div></div>
 
       <button className="card" style={{width:"100%",textAlign:"left"}} onClick={()=>setShowReport(true)}>
         <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>Tap to make a direct report</p></div><b>›</b></div>
@@ -340,11 +453,40 @@ export default function Home(){
       <div className="row periodRow"><div><label>Fee month</label><input type="month" value={currentPeriod} onChange={e=>setCurrentPeriod(e.target.value)}/></div><button className="primary" onClick={generateFees}>Generate Monthly Fees</button></div>
 
       <h3>Apartment fee settings</h3>
-      <p className="muted">The day below is only the recurring monthly setting. Generated fee records use and display the full calendar due date.</p>
-      {(managerData?.apartments||[]).map((a:any)=><div className="apt" key={a.id}>
-        <div><b>Apartment {a.apartment_number}</b><div className="muted">€{Number(a.monthly_fee||0).toFixed(2)} • due day {a.fee_due_day}</div></div>
-        <button className="secondary" onClick={()=>{setSelectedApartment(a);setFeeAmount(String(a.monthly_fee||0));setFeeDueDay(String(a.fee_due_day||1))}}>Edit Fee</button>
-      </div>)}
+      <p className="muted">Choose one apartment, then edit only that apartment's fee settings.</p>
+
+      <label>Apartment</label>
+      <select
+        value={selectedApartmentId}
+        onChange={e=>{
+          const id=e.target.value;
+          setSelectedApartmentId(id);
+          const a=managerData.apartments.find((x:any)=>x.id===id);
+          setSelectedApartment(a||null);
+          if(a){
+            setFeeAmount(String(a.monthly_fee||0));
+            setFeeDueDay(String(a.fee_due_day||1));
+          }
+        }}
+      >
+        {(managerData?.apartments||[]).map((a:any)=>
+          <option key={a.id} value={a.id}>Apartment {a.apartment_number}</option>
+        )}
+      </select>
+
+      {selectedApartment&&<div className="selectedApartmentEditor">
+        <div className="grid2">
+          <div>
+            <label>Monthly fee (€)</label>
+            <input type="number" min="0" step="0.01" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)}/>
+          </div>
+          <div>
+            <label>Recurring due day each month</label>
+            <input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
+          </div>
+        </div>
+        <button className="primary full" onClick={saveApartmentFee}>Save Apartment Fee</button>
+      </div>}
     </div>
 
     <div className="card">
@@ -353,7 +495,7 @@ export default function Home(){
         const a=managerData.apartments.find((x:any)=>x.id===f.apartment_id);
         return <div className="apt" key={f.id}>
           <div><b>Apartment {a?.apartment_number||"?"}</b><div className="muted">€{Number(f.amount).toFixed(2)} • due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div></div>
-          <div className="row"><span className={`feeBadge ${feeStatusClass(f.status)}`}>{f.status}</span><button className="primary" onClick={()=>markFee(f.id,true)}>Mark Paid</button></div>
+          <div className="row"><span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span><button className="primary" onClick={()=>markFee(f.id,true)}>Mark Paid</button></div>
         </div>
       })}
     </div>
@@ -366,11 +508,6 @@ export default function Home(){
       <button className="primary full" onClick={createAnnouncement}>Publish Notice</button>
     </div>
 
-    {selectedApartment&&<div className="modal"><div className="modalcard"><h2>Apartment {selectedApartment.apartment_number} fee</h2>
-      <label>Monthly fee (€)</label><input type="number" min="0" step="0.01" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)}/>
-      <label>Recurring due day each month</label><input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
-      <button className="primary full" onClick={saveApartmentFee}>Save Fee Settings</button>
-      <button className="secondary full" onClick={()=>setSelectedApartment(null)}>Cancel</button>
-    </div></div>}
+
   </main>
 }
