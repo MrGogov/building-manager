@@ -164,8 +164,7 @@ export default function Home(){
   function feeStatusClass(status:string){return status==="paid"?"feePaid":status==="overdue"?"feeOverdue":"feePending"}
 
   function tenantDueInfo(){
-    if(!tenantData) return {dueDate:null as Date|null, glow:"", label:""};
-
+    if(!tenantData) return {dueDate:null as Date|null,glow:"",label:""};
     const latestFee=fees[0];
     let dueDate:Date;
 
@@ -180,25 +179,13 @@ export default function Home(){
       dueDate=new Date(y,m,Math.min(configuredDay,lastDay));
     }
 
-    const today=new Date();
-    today.setHours(0,0,0,0);
-    const d=new Date(dueDate);
-    d.setHours(0,0,0,0);
+    const today=new Date(); today.setHours(0,0,0,0);
+    const d=new Date(dueDate); d.setHours(0,0,0,0);
     const days=Math.ceil((d.getTime()-today.getTime())/86400000);
 
-    // A paid fee should never warn the tenant.
-    if(latestFee?.status==="paid"){
-      return {dueDate,glow:"feeGlowPaid",label:"Paid"};
-    }
-
-    if(days<0){
-      return {dueDate,glow:"feeGlowRed",label:"Overdue"};
-    }
-
-    if(days<=2){
-      return {dueDate,glow:"feeGlowYellow",label:days===0?"Due today":days===1?"Due tomorrow":`Due in ${days} days`};
-    }
-
+    if(latestFee?.status==="paid") return {dueDate,glow:"feeGlowPaid",label:"Paid"};
+    if(days<0) return {dueDate,glow:"feeGlowRed",label:"Overdue"};
+    if(days<=2) return {dueDate,glow:"feeGlowYellow",label:days===0?"Due today":days===1?"Due tomorrow":`Due in ${days} days`};
     return {dueDate,glow:"",label:""};
   }
 
@@ -233,15 +220,56 @@ export default function Home(){
 
       <div className="grid2">
         <div className="card"><div className="muted">Apartment</div><div className="stat">{tenantData.apartment.apartment_number}</div></div>
-        <div className={`card monthlyFeeCard ${dueInfo.glow}`}>
-          <div className="row">
-            <div className="muted">Monthly fee</div>
-            {dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}
-          </div>
-          <div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div>
-          <div className="muted">Due: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"}):"—"}</div>
-        </div>
+        <div className={`card monthlyFeeCard ${dueInfo.glow}`}><div className="row"><div className="muted">Monthly fee</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">Due: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"}):"—"}</div></div>
       </div>
+
+      <div className="card"><div className="row"><h2>My Active Issues</h2><span className="tag">{issues.filter(i=>i.status!=="resolved").length}</span></div>
+        {issues.filter(i=>i.status!=="resolved").length===0?<p>No active issues.</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}</div>)}
+      </div>
+
+      <div className="card"><div className="row"><h2>🔔 Notifications</h2><span className="tag">{announcements.length}</span></div>
+        {announcements.length===0?<p>No building notices yet.</p>:announcements.map(n=><div className="issue" key={n.id}><b>{noticeIcon(n.type)} {n.title}</b><p>{n.message}</p></div>)}
+      </div>
+
+      {showReport&&<div className="modal"><div className="modalcard"><h2>Report an issue</h2>
+        <div className="grid2"><button className={severity==="yellow"?"yellowChoice":"secondary"} onClick={()=>setSeverity("yellow")}>🟡 Small discomfort</button><button className={severity==="red"?"redChoice":"secondary"} onClick={()=>setSeverity("red")}>🔴 Bigger issue</button></div>
+        <label>Description</label><textarea value={description} onChange={e=>setDescription(e.target.value)}/>
+        <label className="check"><input type="checkbox" checked={callback} onChange={e=>setCallback(e.target.checked)}/> Request a callback</label>
+        <button className="primary full" onClick={submitIssue}>Submit Report</button><button className="secondary full" onClick={()=>setShowReport(false)}>Cancel</button>
+      </div></div>}
+    </main>
+  }
+
+  return <main className="shell">
+    <div className="top"><div><b>🏠 Building Manager</b><div className="muted">{managerData?.profile?.full_name} • Manager Portal</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
+    {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
+
+    <div className="card"><h2>Manager Dashboard</h2><p>{managerData?.buildings?.[0]?.name||"No building"}</p></div>
+
+    <div className="card"><div className="row"><div><h2>Issue History</h2><div className="muted">Resolved issues remain here for apartment history.</div></div><span className="tag">{managerData?.issues?.length||0}</span></div>
+      {(managerData?.issues||[]).length===0?<p>No tenant issues yet.</p>:(managerData.issues||[]).map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
+    </div>
+
+    <div className="card">
+      <div className="row"><div><h2>💶 Monthly Fees</h2><p>Set apartment fees and generate the selected month.</p></div><span className="tag">{pendingFees.length} pending</span></div>
+      <div className="row periodRow"><div><label>Fee month</label><input type="month" value={currentPeriod} onChange={e=>setCurrentPeriod(e.target.value)}/></div><button className="primary" onClick={generateFees}>Generate Monthly Fees</button></div>
+
+      <h3>Apartment fee settings</h3>
+      <p className="muted">The day below is only the recurring monthly setting. Generated fee records use and display the full calendar due date.</p>
+      {(managerData?.apartments||[]).map((a:any)=><div className="apt" key={a.id}>
+        <div><b>Apartment {a.apartment_number}</b><div className="muted">€{Number(a.monthly_fee||0).toFixed(2)} • due day {a.fee_due_day}</div></div>
+        <button className="secondary" onClick={()=>{setSelectedApartment(a);setFeeAmount(String(a.monthly_fee||0));setFeeDueDay(String(a.fee_due_day||1))}}>Edit Fee</button>
+      </div>)}
+    </div>
+
+    <div className="card">
+      <div className="row"><h2>Pending Tenant Fees</h2><span className="tag">{pendingFees.length}</span></div>
+      {pendingFees.length===0?<p>No pending fees.</p>:pendingFees.map(f=>{
+        const a=managerData.apartments.find((x:any)=>x.id===f.apartment_id);
+        return <div className="apt" key={f.id}>
+          <div><b>Apartment {a?.apartment_number||"?"}</b><div className="muted">€{Number(f.amount).toFixed(2)} • due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div></div>
+          <div className="row"><span className={`feeBadge ${feeStatusClass(f.status)}`}>{f.status}</span><button className="primary" onClick={()=>markFee(f.id,true)}>Mark Paid</button></div>
+        </div>
       })}
     </div>
 
