@@ -43,3 +43,14 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
   .ovalItem{width:68px}
   .residentAvatar{width:52px;height:52px}
 }
+
+/* Keep the top apartment fully clear of the manager card */
+.communityStage{min-height:500px}
+.managerHub{top:16px;z-index:5}
+.residentOval{top:145px;bottom:22px;z-index:1}
+.ovalItem{z-index:2}
+@media(max-width:700px){
+  .communityStage{min-height:540px}
+  .managerHub{top:14px}
+  .residentOval{top:135px;bottom:20px}
+}

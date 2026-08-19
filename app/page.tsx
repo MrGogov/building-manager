@@ -256,7 +256,7 @@ export default function Home(){
             {community.map((r:any,index:number)=>{
               const angle=(Math.PI*2*index/Math.max(community.length,1))-Math.PI/2;
               const x=50+43*Math.cos(angle);
-              const y=55+38*Math.sin(angle);
+              const y=62+30*Math.sin(angle);
               return <div className="residentItem ovalItem" key={r.apartment_id} style={{left:`${x}%`,top:`${y}%`}}>
                 <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`Apartment ${r.apartment_number}`}>
                   {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
