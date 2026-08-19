@@ -64,3 +64,17 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
 @media(max-width:620px){.profileRow{align-items:center}.profilePhoto{width:64px;height:64px}.profilePhotoWrap{min-width:84px}}
 
 .selectedApartmentEditor{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fbfcfa}
+
+.headerActions{display:flex;align-items:center;gap:9px}
+.bellButton{position:relative;background:#eef3ef;color:#35533c;width:44px;height:44px;padding:0;border-radius:50%;font-size:18px}
+.bellBadge{position:absolute;right:-3px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#df6d67;color:white;font-size:10px;display:flex;align-items:center;justify-content:center}
+.issueFilterGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 10px}
+.filterTile{background:#f5f7f5;color:#365044;border:1px solid var(--line);display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left}
+.filterTile.yellowTile{background:#fff9df}.filterTile.redTile{background:#fdf0ef}.filterTile.filterActive{outline:2px solid #78b77b;outline-offset:1px}
+.filterNumber{font-size:23px;font-weight:900}
+.filterBar{display:flex;justify-content:space-between;align-items:center;margin:4px 0 6px}
+.linkButton{background:transparent;color:#3f7750;padding:6px 8px}
+@media(max-width:620px){
+  .issueFilterGrid{grid-template-columns:1fr 1fr}
+  .headerActions{gap:6px}
+}

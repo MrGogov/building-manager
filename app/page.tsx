@@ -24,6 +24,7 @@ export default function Home(){
   const[avatarUploading,setAvatarUploading]=useState(false);
 
   const[showReport,setShowReport]=useState(false);
+  const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("all");
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
 
@@ -342,6 +343,15 @@ export default function Home(){
 
   const pendingFees=useMemo(()=>fees.filter(f=>effectiveFeeStatus(f)!=="paid"),[fees]);
 
+  const managerIssues=managerData?.issues||[];
+  const filteredManagerIssues=managerIssues.filter((i:any)=>{
+    if(issueFilter==="yellow")return i.severity==="yellow";
+    if(issueFilter==="red")return i.severity==="red";
+    if(issueFilter==="active")return i.status!=="resolved";
+    if(issueFilter==="resolved")return i.status==="resolved";
+    return true;
+  });
+
   if(loading)return <main className="shell"><div className="card"><h1>Loading…</h1></div></main>;
 
   if(!session)return <main className="shell"><div className="card authCard">
@@ -360,7 +370,15 @@ export default function Home(){
     const latestFee=fees.find((f:any)=>effectiveFeeStatus(f)!=="paid")||fees[0];
     const dueInfo=tenantDueInfo(latestFee);
     return <main className="shell">
-      <div className="top"><div><b>🏠 {tenantData.building.name}</b><div className="muted">Resident Portal • Apartment {tenantData.apartment.apartment_number}</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
+      <div className="top">
+        <div><b>🏠 {tenantData.building.name}</b><div className="muted">Resident Portal • Apartment {tenantData.apartment.apartment_number}</div></div>
+        <div className="headerActions">
+          <button className="bellButton" onClick={()=>document.getElementById("tenantNotifications")?.scrollIntoView({behavior:"smooth",block:"start"})} aria-label="Notifications">
+            🔔{announcements.length>0&&<span className="bellBadge">{announcements.length}</span>}
+          </button>
+          <button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button>
+        </div>
+      </div>
       {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
 
       <div className="card"><div className="row profileRow">
@@ -435,7 +453,7 @@ export default function Home(){
         {issues.filter(i=>i.status!=="resolved").length===0?<p>No active issues.</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}</div>)}
       </div>
 
-      <div className="card"><div className="row"><h2>🔔 Notifications</h2><span className="tag">{announcements.length}</span></div>
+      <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 Notifications</h2><span className="tag">{announcements.length}</span></div>
         {announcements.length===0?<p>No building notices yet.</p>:announcements.map(n=><div className="issue" key={n.id}><b>{noticeIcon(n.type)} {n.title}</b><p>{n.message}</p></div>)}
       </div>
 
@@ -483,8 +501,34 @@ export default function Home(){
       </div>
     </div>
 
-    <div className="card"><div className="row"><div><h2>Issue History</h2><div className="muted">Resolved issues remain here for apartment history.</div></div><span className="tag">{managerData?.issues?.length||0}</span></div>
-      {(managerData?.issues||[]).length===0?<p>No tenant issues yet.</p>:(managerData.issues||[]).map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
+    <div className="card">
+      <div className="row"><div><h2>Issue History</h2><div className="muted">Resolved issues remain here for apartment history.</div></div><span className="tag">{managerIssues.length}</span></div>
+
+      <div className="issueFilterGrid">
+        <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>setIssueFilter("active")}>
+          <span className="filterNumber">{managerIssues.filter((i:any)=>i.status!=="resolved").length}</span>
+          <span>Active</span>
+        </button>
+        <button className={`filterTile yellowTile ${issueFilter==="yellow"?"filterActive":""}`} onClick={()=>setIssueFilter("yellow")}>
+          <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="yellow").length}</span>
+          <span>Yellow</span>
+        </button>
+        <button className={`filterTile redTile ${issueFilter==="red"?"filterActive":""}`} onClick={()=>setIssueFilter("red")}>
+          <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="red").length}</span>
+          <span>Red</span>
+        </button>
+        <button className={`filterTile ${issueFilter==="resolved"?"filterActive":""}`} onClick={()=>setIssueFilter("resolved")}>
+          <span className="filterNumber">{managerIssues.filter((i:any)=>i.status==="resolved").length}</span>
+          <span>Resolved</span>
+        </button>
+      </div>
+
+      <div className="filterBar">
+        <span className="muted">Showing: {issueFilter}</span>
+        {issueFilter!=="all"&&<button className="linkButton" onClick={()=>setIssueFilter("all")}>Show all</button>}
+      </div>
+
+      {filteredManagerIssues.length===0?<p>No issues in this filter.</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
     </div>
 
     <div className="card">
