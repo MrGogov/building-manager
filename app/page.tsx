@@ -20,6 +20,7 @@ export default function Home(){
   const[issues,setIssues]=useState<any[]>([]);
   const[announcements,setAnnouncements]=useState<any[]>([]);
   const[fees,setFees]=useState<any[]>([]);
+  const[community,setCommunity]=useState<any[]>([]);
 
   const[showReport,setShowReport]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
@@ -84,6 +85,10 @@ export default function Home(){
     setAnnouncements(n||[]);
     const {data:f}=await s.from("fee_records").select("*").eq("apartment_id",apt.id).order("period_month",{ascending:false});
     setFees(f||[]);
+
+    const {data:c,error:ce}=await s.rpc("get_building_community_status",{p_building_id:apt.building_id});
+    if(ce){setError(ce.message);return}
+    setCommunity(c||[]);
   }
 
   async function loadManager(uid:string,profile:any){
@@ -104,6 +109,14 @@ export default function Home(){
     }
     setAnnouncements(notices);setFees(allFees);
     setManagerData({profile,buildings:b||[],apartments:aps,issues:allIssues});
+
+    if(b?.[0]){
+      const {data:c,error:ce}=await s.rpc("get_building_community_status",{p_building_id:b[0].id});
+      if(ce){setError(ce.message);return}
+      setCommunity(c||[]);
+    }else{
+      setCommunity([]);
+    }
   }
 
   async function submitIssue(){
@@ -189,6 +202,14 @@ export default function Home(){
     return {dueDate,glow:"",label:""};
   }
 
+  function statusClass(color:string){
+    return color==="red"?"residentRed":color==="yellow"?"residentYellow":"residentGreen";
+  }
+
+  function initials(name:string){
+    return (name||"?").split(/\s+/).filter(Boolean).slice(0,2).map((x:string)=>x[0]?.toUpperCase()).join("")||"?";
+  }
+
   const pendingFees=useMemo(()=>fees.filter(f=>f.status!=="paid"),[fees]);
 
   if(loading)return <main className="shell"><div className="card"><h1>Loading…</h1></div></main>;
@@ -218,6 +239,36 @@ export default function Home(){
         <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>Tap to make a direct report</p></div><b>›</b></div>
       </button>
 
+      <div className="card communityCard">
+        <div className="row">
+          <div><h2>Building Community</h2><div className="muted">Status only — issue details remain private.</div></div>
+          <span className="tag">{community.length} residents</span>
+        </div>
+
+        <div className="communityStage">
+          <button className="managerHub" onClick={()=>setShowReport(true)}>
+            <span className="managerHubIcon">🏢</span>
+            <span>Building Manager</span>
+            <small>Direct report</small>
+          </button>
+
+          <div className="residentRing">
+            {community.map((r:any)=><div className="residentItem" key={r.apartment_id}>
+              <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`Apartment ${r.apartment_number}`}>
+                {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
+              </div>
+              <div className="residentLabel">Apt {r.apartment_number}</div>
+            </div>)}
+          </div>
+        </div>
+
+        <div className="legend">
+          <span><i className="dot greenDot"></i>No active issue</span>
+          <span><i className="dot yellowDot"></i>Small discomfort</span>
+          <span><i className="dot redDot"></i>Bigger issue</span>
+        </div>
+      </div>
+
       <div className="grid2">
         <div className="card"><div className="muted">Apartment</div><div className="stat">{tenantData.apartment.apartment_number}</div></div>
         <div className={`card monthlyFeeCard ${dueInfo.glow}`}><div className="row"><div className="muted">Monthly fee</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">Due: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"}):"—"}</div></div>
@@ -245,6 +296,30 @@ export default function Home(){
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
 
     <div className="card"><h2>Manager Dashboard</h2><p>{managerData?.buildings?.[0]?.name||"No building"}</p></div>
+
+    <div className="card communityCard">
+      <div className="row">
+        <div><h2>Building Status</h2><div className="muted">Live resident overview by apartment.</div></div>
+        <span className="tag">{community.length} residents</span>
+      </div>
+
+      <div className="communityStage managerView">
+        <div className="managerHub staticHub">
+          <span className="managerHubIcon">🏢</span>
+          <span>Building Manager</span>
+          <small>{managerData?.buildings?.[0]?.name||""}</small>
+        </div>
+
+        <div className="residentRing">
+          {community.map((r:any)=><div className="residentItem" key={r.apartment_id}>
+            <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`${r.tenant_name} • Apartment ${r.apartment_number}`}>
+              {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
+            </div>
+            <div className="residentLabel">Apt {r.apartment_number}</div>
+          </div>)}
+        </div>
+      </div>
+    </div>
 
     <div className="card"><div className="row"><div><h2>Issue History</h2><div className="muted">Resolved issues remain here for apartment history.</div></div><span className="tag">{managerData?.issues?.length||0}</span></div>
       {(managerData?.issues||[]).length===0?<p>No tenant issues yet.</p>:(managerData.issues||[]).map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}

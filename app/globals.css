@@ -17,3 +17,14 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
 .feeAlertLabel{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:#fff4bf;color:#735f13}
 .feeGlowRed .feeAlertLabel{background:#fde5e3;color:#8e3934}
 .feeGlowPaid .feeAlertLabel{background:#e6f5e8;color:#2d6b37}
+
+.communityCard{overflow:hidden}
+.communityStage{position:relative;min-height:360px;margin-top:18px;border:1px dashed #dfe6e1;border-radius:22px;background:linear-gradient(180deg,#fbfcfa,#f5f8f5)}
+.managerHub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:190px;padding:22px 24px;border-radius:18px;background:#e8f0f7;color:#264964;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 10px 30px rgba(45,75,95,.12);z-index:2}
+.managerHubIcon{font-size:28px}.managerHub small{font-weight:600;opacity:.7}.staticHub{cursor:default}
+.residentRing{display:grid;grid-template-columns:repeat(5,minmax(74px,1fr));gap:20px 16px;padding:28px;align-items:start}
+.residentItem{text-align:center}
+.residentAvatar{width:64px;height:64px;border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;background:#fff;font-weight:900;border:3px solid #78b77b;box-shadow:0 0 0 7px rgba(120,183,123,.16)}
+.residentAvatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}.residentYellow{border-color:#e9c65b;box-shadow:0 0 0 7px rgba(233,198,91,.18),0 0 18px rgba(233,198,91,.30)}.residentRed{border-color:#df6d67;box-shadow:0 0 0 7px rgba(223,109,103,.17),0 0 20px rgba(223,109,103,.32)}.residentGreen{border-color:#78b77b}.residentLabel{font-size:12px;color:#718078;font-weight:800}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:12px;color:#718078}.legend span{display:flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}.greenDot{background:#78b77b}.yellowDot{background:#e9c65b}.redDot{background:#df6d67}
+@media(max-width:700px){.communityStage{min-height:430px}.residentRing{grid-template-columns:repeat(3,1fr);padding:22px 14px;gap:20px 10px}.managerHub{min-width:160px;padding:18px}.residentAvatar{width:56px;height:56px}}
