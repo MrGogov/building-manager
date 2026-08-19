@@ -4,51 +4,167 @@ import {useSearchParams,useRouter} from "next/navigation";
 import {createClient} from "../../lib/supabase-browser";
 
 export default function InviteClient(){
-  const sp=useSearchParams(),router=useRouter(),s=createClient();
-  const token=sp.get("token");
+  const sp=useSearchParams();
+  const router=useRouter();
+  const s=createClient();
+
+  const token=sp.get("token")||"";
+  const code=sp.get("code");
+
   const[inv,setInv]=useState<any>(null);
   const[name,setName]=useState("");
   const[pw,setPw]=useState("");
   const[err,setErr]=useState("");
+  const[info,setInfo]=useState("");
   const[done,setDone]=useState(false);
   const[busy,setBusy]=useState(true);
+  const[session,setSession]=useState<any>(null);
 
   useEffect(()=>{
-    if(!token){setErr("Invalid invitation link.");setBusy(false);return}
-    s.from("invitations").select("id,email,status,expires_at,apartment_id,apartments(apartment_number),buildings(name)")
-      .eq("token",token).maybeSingle()
-      .then(({data,error})=>{
-        if(error||!data)setErr("Invitation not found.");
-        else if(data.status!=="pending"||new Date(data.expires_at)<new Date())setErr("This invitation is expired or already used.");
-        else setInv(data);
-        setBusy(false);
-      })
-  },[token]);
+    initialize();
+  },[token,code]);
 
-  async function accept(){
-    if(!inv)return;
+  async function initialize(){
     setBusy(true);setErr("");
-    const{data,error}=await s.auth.signUp({email:inv.email,password:pw,options:{data:{full_name:name,role:"tenant"}}});
-    if(error){setErr(error.message);setBusy(false);return}
-    if(!data.user){setErr("Check your email to confirm your account, then reopen this invitation.");setBusy(false);return}
-    let r=await s.from("profiles").upsert({id:data.user.id,full_name:name,email:inv.email,role:"tenant"});
-    if(r.error){setErr(r.error.message);setBusy(false);return}
-    r=await s.from("apartment_tenants").insert({apartment_id:inv.apartment_id,tenant_id:data.user.id});
-    if(r.error){setErr(r.error.message);setBusy(false);return}
-    r=await s.from("invitations").update({status:"accepted",accepted_by:data.user.id,accepted_at:new Date().toISOString()}).eq("id",inv.id).eq("status","pending");
-    if(r.error){setErr(r.error.message);setBusy(false);return}
-    setDone(true);setBusy(false);
+
+    if(!token){
+      setErr("Invalid invitation link.");
+      setBusy(false);
+      return;
+    }
+
+    if(code){
+      const {error}=await s.auth.exchangeCodeForSession(code);
+      if(error){
+        setErr(error.message);
+        setBusy(false);
+        return;
+      }
+      // Remove the auth code from the visible URL while preserving the invite token.
+      history.replaceState({}, "", `/invite?token=${encodeURIComponent(token)}`);
+    }
+
+    const {data:{session:currentSession}}=await s.auth.getSession();
+    setSession(currentSession);
+
+    const {data,error}=await s.rpc("get_invitation_by_token",{p_token:token});
+    if(error||!data?.length){
+      setErr(error?.message||"Invitation not found.");
+      setBusy(false);
+      return;
+    }
+
+    const row=data[0];
+    if(row.status!=="pending"){
+      setErr("This invitation has already been used or revoked.");
+      setBusy(false);
+      return;
+    }
+    if(new Date(row.expires_at)<=new Date()){
+      setErr("This invitation has expired.");
+      setBusy(false);
+      return;
+    }
+
+    setInv(row);
+    setBusy(false);
+
+    if(currentSession){
+      await completeInvitation(currentSession);
+    }
+  }
+
+  async function createAccount(){
+    if(!inv)return;
+    setBusy(true);setErr("");setInfo("");
+
+    const redirectTo=`${location.origin}/invite?token=${encodeURIComponent(token)}`;
+    const {data,error}=await s.auth.signUp({
+      email:inv.email,
+      password:pw,
+      options:{
+        emailRedirectTo:redirectTo,
+        data:{full_name:name,role:"tenant"}
+      }
+    });
+
+    if(error){
+      setErr(error.message);
+      setBusy(false);
+      return;
+    }
+
+    if(data.session){
+      setSession(data.session);
+      await completeInvitation(data.session);
+      return;
+    }
+
+    setInfo("Account created. Check your email and confirm your address. The confirmation link will return you to this invitation.");
+    setBusy(false);
+  }
+
+  async function completeInvitation(currentSession?:any){
+    const sess=currentSession||(await s.auth.getSession()).data.session;
+    if(!sess){
+      setErr("Please confirm your email and sign in before accepting the invitation.");
+      setBusy(false);
+      return;
+    }
+
+    const {data,error}=await s.rpc("accept_invitation",{p_token:token});
+    if(error){
+      setErr(error.message);
+      setBusy(false);
+      return;
+    }
+
+    setDone(true);
+    setBusy(false);
   }
 
   return <div className="card" style={{maxWidth:520,margin:"60px auto"}}>
     <h1>🏠 Tenant invitation</h1>
+
     {busy&&!inv&&!err&&<p>Checking invitation…</p>}
     {err&&<div className="notice error">{err}</div>}
-    {done&&<><div className="notice success">Account created and linked to Apartment {inv?.apartments?.apartment_number}.</div><button className="primary full" onClick={()=>router.push("/")}>Open app</button></>}
-    {inv&&!done&&<><p>You have been invited to <b>{inv.buildings?.name}</b>, Apartment <b>{inv.apartments?.apartment_number}</b>.</p>
-      <label>Your name</label><input value={name} onChange={e=>setName(e.target.value)}/>
-      <label>Email</label><input value={inv.email} readOnly/>
-      <label>Create password</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)}/>
-      <button className="primary full" disabled={!name||pw.length<8||busy} onClick={accept}>Create Tenant Account</button></>}
+    {info&&<div className="notice success">{info}</div>}
+
+    {done&&<>
+      <div className="notice success">
+        Invitation accepted. Your account is now linked to Apartment {inv?.apartment_number}.
+      </div>
+      <button className="primary full" onClick={()=>router.push("/")}>Open Building Manager</button>
+    </>}
+
+    {inv&&!done&&!session&&<>
+      <p>
+        You have been invited to <b>{inv.building_name}</b>,
+        Apartment <b>{inv.apartment_number}</b>.
+      </p>
+
+      <label>Your name</label>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name"/>
+
+      <label>Email</label>
+      <input value={inv.email} readOnly/>
+
+      <label>Create password</label>
+      <input type="password" value={pw} onChange={e=>setPw(e.target.value)}/>
+
+      <button className="primary full" disabled={!name||pw.length<8||busy} onClick={createAccount}>
+        Create Tenant Account
+      </button>
+    </>}
+
+    {inv&&!done&&session&&<>
+      <p>
+        Signed in as <b>{session.user.email}</b>. Complete the invitation for
+        Apartment <b>{inv.apartment_number}</b>.
+      </p>
+      <button className="primary full" disabled={busy} onClick={()=>completeInvitation(session)}>
+        Complete Invitation
+      </button>
+    </>}
   </div>
 }
