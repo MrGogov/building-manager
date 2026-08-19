@@ -210,9 +210,49 @@ export default function Home(){
   }
 
   async function markFee(id:string,paid:boolean){
-    const {error:e}=await s.from("fee_records").update({status:paid?"paid":"pending",paid_at:paid?new Date().toISOString():null}).eq("id",id);
+    const current=fees.find((f:any)=>f.id===id);
+    const {error:e}=await s.from("fee_records")
+      .update({status:paid?"paid":"pending",paid_at:paid?new Date().toISOString():null})
+      .eq("id",id);
     if(e){setError(e.message);return}
-    setMsg(paid?"Fee marked as paid.":"Fee returned to pending.");
+
+    if(paid&&current){
+      const apt=managerData.apartments.find((a:any)=>a.id===current.apartment_id);
+      if(apt){
+        const currentPeriod=new Date(current.period_month+"T00:00:00");
+        const nextPeriod=new Date(currentPeriod.getFullYear(),currentPeriod.getMonth()+1,1);
+        const y=nextPeriod.getFullYear();
+        const m=nextPeriod.getMonth();
+        const dueDay=Math.max(1,Math.min(31,Number(apt.fee_due_day||1)));
+        const lastDay=new Date(y,m+1,0).getDate();
+        const nextDue=new Date(y,m,Math.min(dueDay,lastDay));
+
+        const periodIso=`${y}-${String(m+1).padStart(2,"0")}-01`;
+        const dueIso=`${y}-${String(m+1).padStart(2,"0")}-${String(nextDue.getDate()).padStart(2,"0")}`;
+
+        const {data:existing,error:lookupError}=await s.from("fee_records")
+          .select("id")
+          .eq("apartment_id",current.apartment_id)
+          .eq("period_month",periodIso)
+          .maybeSingle();
+
+        if(lookupError){setError(lookupError.message);return}
+
+        if(!existing){
+          const {error:nextError}=await s.from("fee_records").insert({
+            building_id:current.building_id,
+            apartment_id:current.apartment_id,
+            period_month:periodIso,
+            amount:Number(apt.monthly_fee||current.amount||0),
+            due_date:dueIso,
+            status:"pending"
+          });
+          if(nextError){setError(nextError.message);return}
+        }
+      }
+    }
+
+    setMsg(paid?"Fee marked as paid. Next month's due date is now prepared.":"Fee returned to pending.");
     await loadManager(session.user.id,managerData.profile);
   }
 
@@ -266,9 +306,8 @@ export default function Home(){
 
   function feeStatusClass(status:string){return status==="paid"?"feePaid":status==="overdue"?"feeOverdue":"feePending"}
 
-  function tenantDueInfo(){
+  function tenantDueInfo(latestFee:any){
     if(!tenantData) return {dueDate:null as Date|null,glow:"",label:""};
-    const latestFee=fees[0];
     let dueDate:Date;
 
     if(latestFee?.due_date){
@@ -318,8 +357,8 @@ export default function Home(){
   if(role==="tenant"&&tenantData){
     const active=issues.find(i=>i.status!=="resolved");
     const color=active?.severity==="red"?"#df6d67":active?.severity==="yellow"?"#e9c65b":"#78b77b";
-    const latestFee=fees[0];
-    const dueInfo=tenantDueInfo();
+    const latestFee=fees.find((f:any)=>effectiveFeeStatus(f)!=="paid")||fees[0];
+    const dueInfo=tenantDueInfo(latestFee);
     return <main className="shell">
       <div className="top"><div><b>🏠 {tenantData.building.name}</b><div className="muted">Resident Portal • Apartment {tenantData.apartment.apartment_number}</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
       {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
