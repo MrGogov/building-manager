@@ -21,6 +21,7 @@ export default function Home(){
 
   const[authMode,setAuthMode]=useState<"login"|"signup">("login");
   const[email,setEmail]=useState(""); const[password,setPassword]=useState(""); const[fullName,setFullName]=useState("");
+  const[resetSending,setResetSending]=useState(false);
 
   const[managerData,setManagerData]=useState<any>(null);
   const[selectedBuildingId,setSelectedBuildingId]=useState("");
@@ -128,6 +129,18 @@ export default function Home(){
       subscription.unsubscribe();
     };
   },[]);
+
+  async function sendPasswordReset(){
+    setError("");setMsg("");
+    if(!email.trim()){setError(t("Enter your email first."));return}
+    setResetSending(true);
+    const {error}=await s.auth.resetPasswordForEmail(email.trim(),{
+      redirectTo:`${location.origin}/reset-password`
+    });
+    setResetSending(false);
+    if(error){setError(error.message);return}
+    setMsg(t("Password reset email sent. Check your inbox."));
+  }
 
   async function signIn(){
     setError("");setMsg("");
@@ -790,6 +803,7 @@ export default function Home(){
     <label>{t("Email")}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
     <label>{t("Password")}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
     <button className="primary full" onClick={authMode==="login"?signIn:signUpManager}>{authMode==="login"?t("Log in"):t("Create manager account")}</button>
+    {authMode==="login"&&<button className="textButton full" disabled={resetSending} onClick={sendPasswordReset}>{resetSending?t("Sending…"):t("Forgot password?")}</button>}
     <button className="secondary full" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?t("Create a manager account"):t("Back to login")}</button>
     {isIosSafari&&!isStandalone&&<>
       <button className="secondary full installAppButton" onClick={()=>setShowInstallHelp(v=>!v)}>📱 {t("Install on iPhone")}</button>

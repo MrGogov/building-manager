@@ -255,3 +255,6 @@ button:not(:disabled):active{
   transition-duration:.06s;
 }
 button:disabled{cursor:not-allowed;opacity:.58}
+
+.textButton{background:transparent;color:#4c7657;box-shadow:none!important;margin-top:6px;padding:8px 12px}
+@media(hover:hover) and (pointer:fine){.textButton:not(:disabled):hover{background:#f0f5f1;transform:none}}
