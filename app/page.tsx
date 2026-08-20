@@ -55,6 +55,10 @@ export default function Home(){
   const[customers,setCustomers]=useState<any[]>([]);
   const[customersLoading,setCustomersLoading]=useState(false);
   const[expandedCustomerId,setExpandedCustomerId]=useState<string|null>(null);
+  const[supportWorkspace,setSupportWorkspace]=useState<any>(null);
+  const[supportWorkspaceLoading,setSupportWorkspaceLoading]=useState(false);
+  const[supportBuildingId,setSupportBuildingId]=useState("");
+  const[supportTab,setSupportTab]=useState<"overview"|"issues"|"notices"|"fees"|"residents">("overview");
   const[auditLog,setAuditLog]=useState<any[]>([]);
   const[auditLoading,setAuditLoading]=useState(false);
   const[deleteCustomer,setDeleteCustomer]=useState<any>(null);
@@ -278,6 +282,22 @@ export default function Home(){
       "fee.status_updated":"Fee status updated"
     };
     return t(labels[action]||action);
+  }
+
+  async function openCustomerSupportWorkspace(customer:any){
+    if(!isPlatformOwner)return;
+    setError("");setMsg("");setSupportWorkspaceLoading(true);
+    const {data,error}=await s.functions.invoke("manage-customers",{body:{action:"workspace",company_id:customer.id}});
+    setSupportWorkspaceLoading(false);
+    if(error){setError(error.message);return}
+    if(data?.error){setError(data.error);return}
+    setSupportWorkspace(data);
+    setSupportBuildingId(data?.buildings?.[0]?.id||"");
+    setSupportTab("overview");
+  }
+
+  function closeCustomerSupportWorkspace(){
+    setSupportWorkspace(null);setSupportBuildingId("");setSupportTab("overview");
   }
 
   function openAccountSettings(){
@@ -1895,6 +1915,7 @@ export default function Home(){
             </div>
             <div className="teamMemberActions">
               <button className="secondary" onClick={()=>setExpandedCustomerId(expandedCustomerId===c.id?null:c.id)}>{expandedCustomerId===c.id?t("Hide Buildings"):t("View Buildings")}</button>
+              <button className="primary" disabled={supportWorkspaceLoading} onClick={()=>openCustomerSupportWorkspace(c)}>{supportWorkspaceLoading?t("Opening…"):t("Open Support Workspace")}</button>
               <button className="danger" onClick={()=>{setDeleteCustomer(c);setDeleteCustomerConfirm("");setError("");setMsg("")}}>{t("Remove Customer")}</button>
             </div>
           </div>
@@ -1915,6 +1936,43 @@ export default function Home(){
         </div>)}
       </div>
     </>}
+
+    {supportWorkspace&&<div className="modal supportWorkspaceModal"><div className="modalcard supportWorkspaceCard">
+      <div className="row">
+        <div><h2>🛟 {t("Platform Owner Support Mode")}</h2><div className="muted">{supportWorkspace.company?.name} • {t("Read-only troubleshooting workspace")}</div></div>
+        <button className="secondary" onClick={closeCustomerSupportWorkspace}>{t("Exit Support Mode")}</button>
+      </div>
+      <div className="notice">🔒 {t("This support session is read-only and has been recorded in the Audit Log.")}</div>
+
+      {(supportWorkspace.buildings||[]).length===0?<p>{t("This customer has not created any buildings yet.")}</p>:<>
+        <label>{t("Building")}</label>
+        <select value={supportBuildingId} onChange={e=>{setSupportBuildingId(e.target.value);setSupportTab("overview")}}>
+          {(supportWorkspace.buildings||[]).map((b:any)=><option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
+        </select>
+
+        <div className="managerTabs supportTabs">
+          {(["overview","issues","notices","fees","residents"] as const).map(tab=><button key={tab} className={`managerTab ${supportTab===tab?"managerTabActive":""}`} onClick={()=>setSupportTab(tab)}>
+            {t(tab==="overview"?"Overview":tab==="issues"?"Issues":tab==="notices"?"Building Notices":tab==="fees"?"Fees":"Residents")}
+          </button>)}
+        </div>
+
+        {(()=>{
+          const b=(supportWorkspace.buildings||[]).find((x:any)=>x.id===supportBuildingId);
+          const aps=(supportWorkspace.apartments||[]).filter((x:any)=>x.building_id===supportBuildingId);
+          const issues=(supportWorkspace.issues||[]).filter((x:any)=>x.building_id===supportBuildingId);
+          const notices=(supportWorkspace.announcements||[]).filter((x:any)=>x.building_id===supportBuildingId);
+          const fees=(supportWorkspace.fees||[]).filter((x:any)=>x.building_id===supportBuildingId);
+          const tenancy=(supportWorkspace.tenancies||[]).filter((t:any)=>aps.some((a:any)=>a.id===t.apartment_id)&&!t.ended_at);
+          const profiles=new Map((supportWorkspace.tenant_profiles||[]).map((p:any)=>[p.id,p]));
+          const aptMap=new Map(aps.map((a:any)=>[a.id,a]));
+          if(supportTab==="overview")return <div className="card"><h3>{b?.name}</h3><p className="muted">{b?.address}{b?.city?` • ${b.city}`:""}</p><div className="teamBuildingChips"><span className="tag">🏠 {aps.length} {t("apartments")}</span><span className="tag">👥 {tenancy.length} {t("active tenants")}</span><span className="tag">🛠️ {issues.filter((i:any)=>i.status!=="resolved").length} {t("open issues")}</span><span className="tag">📣 {notices.filter((n:any)=>!n.completed_at).length} {t("active notices")}</span></div></div>;
+          if(supportTab==="issues")return <div className="card">{issues.length===0?<p>{t("No issues found.")}</p>:issues.map((i:any)=><div className="teamMemberRow" key={i.id}><div><b>{i.severity==="red"?"🔴":"🟡"} {t(i.status)}</b><div>{i.description}</div><div className="muted">{t("Apartment")} {aptMap.get(i.apartment_id)?.apartment_number||"?"} • {new Date(i.created_at).toLocaleString(dateLocale)}</div></div></div>)}</div>;
+          if(supportTab==="notices")return <div className="card">{notices.length===0?<p>{t("No building notices yet.")}</p>:notices.map((n:any)=><div className="teamMemberRow" key={n.id}><div><b>📣 {n.title}</b><div>{n.message}</div><div className="muted">{n.completed_at?t("Completed"):t("Pending")} • {new Date(n.created_at).toLocaleString(dateLocale)}</div></div></div>)}</div>;
+          if(supportTab==="fees")return <div className="card">{fees.length===0?<p>{t("No fee records found.")}</p>:fees.slice(0,100).map((f:any)=><div className="teamMemberRow" key={f.id}><div><b>{t("Apartment")} {aptMap.get(f.apartment_id)?.apartment_number||"?"} • €{Number(f.amount||0).toFixed(2)}</b><div className="muted">{t(f.status)} • {t("Due")} {f.due_date}</div></div></div>)}</div>;
+          return <div className="card">{tenancy.length===0?<p>{t("No active residents found.")}</p>:tenancy.map((tn:any)=>{const p=profiles.get(tn.tenant_id) as any;const a=aptMap.get(tn.apartment_id) as any;return <div className="teamMemberRow" key={`${tn.apartment_id}-${tn.tenant_id}`}><div><b>{p?.full_name||p?.email||t("Resident")}</b><div className="muted">{t("Apartment")} {a?.apartment_number||"?"} • {p?.email||""}</div></div></div>})}</div>;
+        })()}
+      </>}
+    </div></div>}
 
     {deleteCustomer&&<div className="modal"><div className="modalcard">
       <h2>⚠️ {t("Remove Customer")}</h2>
