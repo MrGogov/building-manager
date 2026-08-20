@@ -14,7 +14,7 @@ self.addEventListener("activate",event=>{
 self.addEventListener("push",event=>{
   let data={};
   try{data=event.data?event.data.json():{}}catch{data={body:event.data?event.data.text():""}}
-  const title=data.title||"Building Manager";
+  const title=data.title||"Building Community";
   const options={
     body:data.body||"You have a new update.",
     icon:"/icon-192.png",
