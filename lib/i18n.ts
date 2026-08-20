@@ -187,6 +187,12 @@ const bg:Record<string,string>={
   "Mark this notice as completed?":"Да се маркира ли това съобщение като приключено?",
   "Notice marked as completed.":"Съобщението е маркирано като приключено.",
   "Notice reopened.":"Съобщението е отворено отново.",
+  "Building Notices":"Съобщения за сградата",
+  "Create Notice":"Създай съобщение",
+  "Pending Notices":"Активни съобщения",
+  "Completed Notices":"Приключени съобщения",
+  "No pending notices.":"Няма активни съобщения.",
+  "No completed notices.":"Няма приключени съобщения.",
 };
 
 export function useLanguage(){

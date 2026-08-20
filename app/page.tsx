@@ -33,6 +33,7 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
+  const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"issues"|"fees"|"fee_settings">("issues");
   const[tenantDetails,setTenantDetails]=useState<any>(null);
   const[showTenantManager,setShowTenantManager]=useState(false);
@@ -210,6 +211,7 @@ export default function Home(){
     setSelectedApartment(null);
     setIssueFilter("active");
     setManagerTab("dashboard");
+    setNoticeTab("create");
     setApartmentOverviewTab("issues");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
@@ -324,6 +326,7 @@ export default function Home(){
     });
     if(e){setError(e.message);return}
     setNoticeTitle("");setNoticeMessage("");setNoticeStart("");setNoticeEnd("");setMsg("Building notice published.");
+    setNoticeTab("pending");
     await loadManager(session.user.id,managerData.profile);
   }
 
@@ -370,6 +373,7 @@ export default function Home(){
     }).eq("id",id);
     if(e){setError(e.message);return}
     setMsg(t("Notice marked as completed."));
+    setNoticeTab("completed");
     await loadManager(session.user.id,managerData.profile);
   }
 
@@ -380,6 +384,7 @@ export default function Home(){
     }).eq("id",id);
     if(e){setError(e.message);return}
     setMsg(t("Notice reopened."));
+    setNoticeTab("pending");
     await loadManager(session.user.id,managerData.profile);
   }
 
@@ -1003,38 +1008,94 @@ export default function Home(){
       </div>}
     </div>
 
-    <div className="card"><h2>📣 {t("Publish Building Notice")}</h2><div className="muted">{t("Publishing to")} {managerData?.selectedBuilding?.name||t("selected building")}.</div>
-      <label>{t("Notice type")}</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 {t("Planned works")}</option><option value="general">📣 {t("General announcement")}</option><option value="important">⚠️ {t("Important notice")}</option></select>
-      <label>{t("Title")}</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
-      <label>{t("Message")}</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
-      <div className="grid2"><div><label>{t("Starts")}</label><input type="datetime-local" value={noticeStart} onChange={e=>setNoticeStart(e.target.value)}/></div><div><label>{t("Ends")}</label><input type="datetime-local" value={noticeEnd} onChange={e=>setNoticeEnd(e.target.value)}/></div></div>
-      <button className="primary full" onClick={createAnnouncement}>{t("Publish Notice")}</button>
-    </div>
+    <div className="card noticeWorkspace">
+      <div className="row noticeWorkspaceHeader">
+        <div>
+          <h2>📣 {t("Building Notices")}</h2>
+          <div className="muted">{managerData?.selectedBuilding?.name||t("selected building")}</div>
+        </div>
+        <span className="tag">{announcements.length}</span>
+      </div>
 
-    <div className="card">
-      <div className="row"><div><h2>📋 {t("Published Notices")}</h2><div className="muted">{t("Update dates and times, or mark completed notices.")}</div></div><span className="tag">{announcements.length}</span></div>
-      {announcements.length===0?<p>{t("No notices published yet.")}</p>:announcements.map((n:any)=><div className={`managedNotice ${n.completed_at?"managedNoticeCompleted":""}`} key={n.id}>
-        <div className="row managedNoticeTop">
-          <div>
-            <b>{noticeIcon(n.type)} {n.title}</b>
-            <div className="muted">{t(n.type==="planned_work"?"Planned works":n.type==="important"?"Important notice":"General announcement")}</div>
-          </div>
-          <span className={`feeBadge ${n.completed_at?"feePaid":"feePending"}`}>{n.completed_at?t("Completed"):t("Active")}</span>
-        </div>
-        <p>{n.message}</p>
-        <div className="noticeSchedule">
-          {n.starts_at&&<div><span className="muted">{t("Starts")}</span><b>{new Date(n.starts_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
-          {n.ends_at&&<div><span className="muted">{t("Ends")}</span><b>{new Date(n.ends_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
-        </div>
-        <div className="noticeActions">
-          <button className="secondary" onClick={()=>openNoticeEditor(n)}>{t("Edit")}</button>
-          {n.completed_at
-            ? <button className="secondary" onClick={()=>reopenAnnouncement(n.id)}>{t("Reopen")}</button>
-            : <button className="primary" onClick={()=>completeAnnouncement(n.id)}>{t("Mark Completed")}</button>}
-        </div>
-      </div>)}
-    </div>
+      <div className="noticeTabs">
+        <button className={`noticeTab ${noticeTab==="create"?"noticeTabActive":""}`} onClick={()=>setNoticeTab("create")}>
+          {t("Create Notice")}
+        </button>
+        <button className={`noticeTab ${noticeTab==="pending"?"noticeTabActive":""}`} onClick={()=>setNoticeTab("pending")}>
+          {t("Pending Notices")}
+          <span className="innerTabCount">{announcements.filter((n:any)=>!n.completed_at).length}</span>
+        </button>
+        <button className={`noticeTab ${noticeTab==="completed"?"noticeTabActive":""}`} onClick={()=>setNoticeTab("completed")}>
+          {t("Completed Notices")}
+          <span className="innerTabCount">{announcements.filter((n:any)=>!!n.completed_at).length}</span>
+        </button>
+      </div>
 
+      {noticeTab==="create"&&<div className="noticeTabPanel">
+        <div className="muted noticePanelIntro">{t("Publishing to")} {managerData?.selectedBuilding?.name||t("selected building")}.</div>
+        <label>{t("Notice type")}</label>
+        <select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}>
+          <option value="planned_work">🔧 {t("Planned works")}</option>
+          <option value="general">📣 {t("General announcement")}</option>
+          <option value="important">⚠️ {t("Important notice")}</option>
+        </select>
+        <label>{t("Title")}</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
+        <label>{t("Message")}</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
+        <div className="grid2">
+          <div><label>{t("Starts")}</label><input type="datetime-local" value={noticeStart} onChange={e=>setNoticeStart(e.target.value)}/></div>
+          <div><label>{t("Ends")}</label><input type="datetime-local" value={noticeEnd} onChange={e=>setNoticeEnd(e.target.value)}/></div>
+        </div>
+        <button className="primary full" onClick={createAnnouncement}>{t("Publish Notice")}</button>
+      </div>}
+
+      {noticeTab==="pending"&&<div className="noticeTabPanel">
+        {announcements.filter((n:any)=>!n.completed_at).length===0
+          ? <p>{t("No pending notices.")}</p>
+          : announcements.filter((n:any)=>!n.completed_at).map((n:any)=><div className="managedNotice" key={n.id}>
+              <div className="row managedNoticeTop">
+                <div>
+                  <b>{noticeIcon(n.type)} {n.title}</b>
+                  <div className="muted">{t(n.type==="planned_work"?"Planned works":n.type==="important"?"Important notice":"General announcement")}</div>
+                </div>
+                <span className="feeBadge feePending">{t("Active")}</span>
+              </div>
+              <p>{n.message}</p>
+              <div className="noticeSchedule">
+                {n.starts_at&&<div><span className="muted">{t("Starts")}</span><b>{new Date(n.starts_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+                {n.ends_at&&<div><span className="muted">{t("Ends")}</span><b>{new Date(n.ends_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+              </div>
+              <div className="noticeActions">
+                <button className="secondary" onClick={()=>openNoticeEditor(n)}>{t("Edit")}</button>
+                <button className="primary" onClick={()=>completeAnnouncement(n.id)}>{t("Mark Completed")}</button>
+              </div>
+            </div>)
+        }
+      </div>}
+
+      {noticeTab==="completed"&&<div className="noticeTabPanel">
+        {announcements.filter((n:any)=>!!n.completed_at).length===0
+          ? <p>{t("No completed notices.")}</p>
+          : announcements.filter((n:any)=>!!n.completed_at).map((n:any)=><div className="managedNotice managedNoticeCompleted" key={n.id}>
+              <div className="row managedNoticeTop">
+                <div>
+                  <b>{noticeIcon(n.type)} {n.title}</b>
+                  <div className="muted">{t(n.type==="planned_work"?"Planned works":n.type==="important"?"Important notice":"General announcement")}</div>
+                </div>
+                <span className="feeBadge feePaid">{t("Completed")}</span>
+              </div>
+              <p>{n.message}</p>
+              <div className="noticeSchedule">
+                {n.starts_at&&<div><span className="muted">{t("Starts")}</span><b>{new Date(n.starts_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+                {n.ends_at&&<div><span className="muted">{t("Ends")}</span><b>{new Date(n.ends_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+              </div>
+              <div className="noticeActions">
+                <button className="secondary" onClick={()=>openNoticeEditor(n)}>{t("Edit")}</button>
+                <button className="secondary" onClick={()=>reopenAnnouncement(n.id)}>{t("Reopen")}</button>
+              </div>
+            </div>)
+        }
+      </div>}
+    </div>
 
     </>}
 
