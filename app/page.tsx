@@ -57,6 +57,7 @@ export default function Home(){
   const[expandedCustomerId,setExpandedCustomerId]=useState<string|null>(null);
   const[supportWorkspace,setSupportWorkspace]=useState<any>(null);
   const[supportWorkspaceLoading,setSupportWorkspaceLoading]=useState(false);
+  const[exportingCustomerId,setExportingCustomerId]=useState<string|null>(null);
   const[supportBuildingId,setSupportBuildingId]=useState("");
   const[supportTab,setSupportTab]=useState<"overview"|"issues"|"notices"|"fees"|"residents">("overview");
   const[auditLog,setAuditLog]=useState<any[]>([]);
@@ -282,6 +283,26 @@ export default function Home(){
       "fee.status_updated":"Fee status updated"
     };
     return t(labels[action]||action);
+  }
+
+  async function exportCustomerBackup(customer:any){
+    if(!isPlatformOwner)return;
+    setError("");setMsg("");setExportingCustomerId(customer.id);
+    const {data,error}=await s.functions.invoke("export-customer-data",{body:{company_id:customer.id}});
+    setExportingCustomerId(null);
+    if(error){setError(error.message);return}
+    if(data?.error){setError(data.error);return}
+    if(!data?.backup){setError(t("Customer backup could not be created."));return}
+    const safeName=String(customer.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"customer";
+    const stamp=new Date().toISOString().slice(0,10);
+    const blob=new Blob([JSON.stringify(data.backup,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`building-community-${safeName}-backup-${stamp}.json`;
+    document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    setMsg(t("Customer backup downloaded."));
   }
 
   async function openCustomerSupportWorkspace(customer:any){
@@ -1900,7 +1921,7 @@ export default function Home(){
           <div className="muted">{t("The temporary password is not stored or shown again.")}</div>
         </div>}
 
-        <div className="row customerListHeader"><div><h3>{t("Customer Portfolio")}</h3><div className="muted">{t("Read-only overview of every customer and the buildings they manage.")}</div></div><button className="secondary" disabled={customersLoading} onClick={loadCustomers}>{customersLoading?t("Loading…"):t("Refresh")}</button></div>
+        <div className="row customerListHeader"><div><h3>{t("Customer Portfolio")}</h3><div className="muted">{t("Read-only overview of every customer and the buildings they manage.")} {t("Use Export Backup before customer removal or whenever you want an off-platform copy.")}</div></div><button className="secondary" disabled={customersLoading} onClick={loadCustomers}>{customersLoading?t("Loading…"):t("Refresh")}</button></div>
         {customersLoading?<p>{t("Loading…")}</p>:customers.length===0?<p>{t("No customer accounts found.")}</p>:customers.map((c:any)=><div className="card" key={c.id}>
           <div className="teamMemberRow">
             <div>
@@ -1915,6 +1936,7 @@ export default function Home(){
             </div>
             <div className="teamMemberActions">
               <button className="secondary" onClick={()=>setExpandedCustomerId(expandedCustomerId===c.id?null:c.id)}>{expandedCustomerId===c.id?t("Hide Buildings"):t("View Buildings")}</button>
+              <button className="secondary" disabled={exportingCustomerId===c.id} onClick={()=>exportCustomerBackup(c)}>{exportingCustomerId===c.id?t("Exporting…"):t("Export Backup")}</button>
               <button className="primary" disabled={supportWorkspaceLoading} onClick={()=>openCustomerSupportWorkspace(c)}>{supportWorkspaceLoading?t("Opening…"):t("Open Support Workspace")}</button>
               <button className="danger" onClick={()=>{setDeleteCustomer(c);setDeleteCustomerConfirm("");setError("");setMsg("")}}>{t("Remove Customer")}</button>
             </div>
