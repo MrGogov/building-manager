@@ -533,18 +533,7 @@ export default function Home(){
         <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>Tap to make a direct report</p></div><b>›</b></div>
       </button>
 
-      <div className="managerTabs">
-      <button className={`managerTab ${managerTab==="dashboard"?"managerTabActive":""}`} onClick={()=>setManagerTab("dashboard")}>
-        Dashboard
-      </button>
-      <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
-        Pending Tenant Fees
-        {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
-      </button>
-    </div>
-
-    {managerTab==="dashboard"&&<>
-    <div className="card communityCard">
+      <div className="card communityCard">
         <div className="row">
           <div><h2>Building Community</h2><div className="muted">Status only — issue details remain private.</div></div>
           <span className="tag">{community.length} residents</span>
@@ -631,6 +620,17 @@ export default function Home(){
       </>:<><p>No buildings are assigned to this management company yet.</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ Create New Building</button></>}
     </div>
 
+    <div className="managerTabs">
+      <button className={`managerTab ${managerTab==="dashboard"?"managerTabActive":""}`} onClick={()=>setManagerTab("dashboard")}>
+        Dashboard
+      </button>
+      <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
+        Pending Tenant Fees
+        {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
+      </button>
+    </div>
+
+    {managerTab==="dashboard"&&<>
     <div className="card communityCard">
       <div className="row">
         <div><h2>Building Status</h2><div className="muted">{managerData?.selectedBuilding?.name} • Live resident overview by apartment.</div></div>
