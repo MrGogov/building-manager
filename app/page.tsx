@@ -135,8 +135,12 @@ export default function Home(){
       return
     }
 
-    const preferred=buildings.find((x:any)=>x.id===selectedBuildingId)?.id||buildings[0].id;
+    const savedBuildingId=typeof window!=="undefined"?localStorage.getItem("bm_selected_building"):null;
+    const preferred=buildings.find((x:any)=>x.id===selectedBuildingId)?.id
+      ||buildings.find((x:any)=>x.id===savedBuildingId)?.id
+      ||buildings[0].id;
     setSelectedBuildingId(preferred);
+    if(typeof window!=="undefined")localStorage.setItem("bm_selected_building",preferred);
     await loadManagerBuilding(uid,profile,buildings,preferred);
   }
 
@@ -181,6 +185,7 @@ export default function Home(){
   async function changeManagerBuilding(buildingId:string){
     if(!session||!managerData)return;
     setSelectedBuildingId(buildingId);
+    if(typeof window!=="undefined")localStorage.setItem("bm_selected_building",buildingId);
     setSelectedApartmentId("");
     setSelectedApartment(null);
     setIssueFilter("active");
@@ -545,15 +550,20 @@ export default function Home(){
       </div>
 
       {managerData?.buildings?.length>0?<>
-        <label>Building</label>
-        <select value={selectedBuildingId} onChange={e=>changeManagerBuilding(e.target.value)}>
-          {managerData.buildings.map((b:any)=><option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
-        </select>
+        <div className="buildingPickerRow">
+          <div className="buildingPickerField">
+            <label>Building</label>
+            <select value={selectedBuildingId} onChange={e=>changeManagerBuilding(e.target.value)}>
+              {managerData.buildings.map((b:any)=><option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
+            </select>
+          </div>
+          <button className="primary createBuildingButton" onClick={()=>location.href="/manager/buildings/new"}>+ Create New Building</button>
+        </div>
         <div className="selectedBuildingSummary">
           <b>🏢 {managerData?.selectedBuilding?.name}</b>
           <span className="muted">{managerData?.selectedBuilding?.address}</span>
         </div>
-      </>:<p>No buildings are assigned to this management company yet.</p>}
+      </>:<><p>No buildings are assigned to this management company yet.</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ Create New Building</button></>}
     </div>
 
     <div className="card communityCard">
