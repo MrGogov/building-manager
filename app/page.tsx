@@ -22,6 +22,10 @@ export default function Home(){
   const[announcements,setAnnouncements]=useState<any[]>([]);
   const[fees,setFees]=useState<any[]>([]);
   const[community,setCommunity]=useState<any[]>([]);
+  const[invitations,setInvitations]=useState<any[]>([]);
+  const[inviteApartment,setInviteApartment]=useState<any>(null);
+  const[inviteEmail,setInviteEmail]=useState("");
+  const[lastInviteLink,setLastInviteLink]=useState("");
   const[avatarUploading,setAvatarUploading]=useState(false);
 
   const[showReport,setShowReport]=useState(false);
@@ -117,7 +121,7 @@ export default function Home(){
     if(!m?.[0]){
       setManagerData({profile,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
       setSelectedBuildingId("");
-      setAnnouncements([]);setFees([]);setCommunity([]);
+      setAnnouncements([]);setFees([]);setCommunity([]);setInvitations([]);
       return
     }
 
@@ -131,7 +135,7 @@ export default function Home(){
     if(!buildings.length){
       setManagerData({profile,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
       setSelectedBuildingId("");
-      setAnnouncements([]);setFees([]);setCommunity([]);
+      setAnnouncements([]);setFees([]);setCommunity([]);setInvitations([]);
       return
     }
 
@@ -149,21 +153,23 @@ export default function Home(){
     const building=buildings.find((x:any)=>x.id===buildingId)||null;
     if(!building)return;
 
-    const [{data:a,error:ae},{data:i,error:ie},{data:n,error:ne},{data:f,error:fe},{data:c,error:ce}]=await Promise.all([
+    const [{data:a,error:ae},{data:i,error:ie},{data:n,error:ne},{data:f,error:fe},{data:c,error:ce},{data:inv,error:inve}]=await Promise.all([
       s.from("apartments").select("id,apartment_number,monthly_fee,fee_due_day").eq("building_id",buildingId).order("apartment_number"),
       s.from("issues").select("*").eq("building_id",buildingId).order("created_at",{ascending:false}),
       s.from("announcements").select("*").eq("building_id",buildingId).order("created_at",{ascending:false}),
       s.from("fee_records").select("*").eq("building_id",buildingId).order("due_date",{ascending:false}),
-      s.rpc("get_building_community_status",{p_building_id:buildingId})
+      s.rpc("get_building_community_status",{p_building_id:buildingId}),
+      s.from("invitations").select("id,apartment_id,email,status,expires_at,token,created_at").eq("building_id",buildingId).order("created_at",{ascending:false})
     ]);
 
-    const firstError=ae||ie||ne||fe||ce;
+    const firstError=ae||ie||ne||fe||ce||inve;
     if(firstError){setError(firstError.message);return}
 
     const aps=a||[];
     setAnnouncements(n||[]);
     setFees(f||[]);
     setCommunity(c||[]);
+    setInvitations(inv||[]);
     setManagerData({profile,buildings,selectedBuilding:building,apartments:aps,issues:i||[]});
 
     // Apartment selection belongs to the selected building.
@@ -191,6 +197,51 @@ export default function Home(){
     setIssueFilter("active");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
+  }
+
+  function inviteUrl(token:string){
+    return `${location.origin}/invite?token=${encodeURIComponent(token)}`;
+  }
+
+  async function copyInvite(url:string){
+    setLastInviteLink(url);
+    try{
+      await navigator.clipboard.writeText(url);
+      setMsg("Invitation link copied.");
+    }catch{
+      setMsg("Invitation created. Copy the link shown below.");
+    }
+  }
+
+  async function createTenantInvitation(){
+    if(!session||!selectedBuildingId||!inviteApartment||!inviteEmail.trim())return;
+    setError("");setMsg("");
+
+    const pending=invitations.find((x:any)=>
+      x.apartment_id===inviteApartment.id&&x.status==="pending"&&new Date(x.expires_at)>new Date()
+    );
+    if(pending){
+      const url=inviteUrl(pending.token);
+      setLastInviteLink(url);
+      setInviteApartment(null);setInviteEmail("");
+      setMsg("This apartment already has a pending invitation. Use the existing link below.");
+      return;
+    }
+
+    const {data,error}=await s.from("invitations").insert({
+      building_id:selectedBuildingId,
+      apartment_id:inviteApartment.id,
+      email:inviteEmail.trim().toLowerCase(),
+      invited_by:session.user.id
+    }).select("id,token,expires_at").single();
+
+    if(error){setError(error.message);return}
+    const url=inviteUrl(data.token);
+    setLastInviteLink(url);
+    setInviteApartment(null);setInviteEmail("");
+    setMsg(`Invitation created for Apartment ${selectedApartment?.apartment_number||""}.`);
+    await copyInvite(url);
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
   }
 
   async function submitIssue(){
@@ -407,6 +458,7 @@ export default function Home(){
   const pendingFees=useMemo(()=>fees.filter(f=>effectiveFeeStatus(f)!=="paid"),[fees]);
 
   const selectedApartmentCommunity=community.find((r:any)=>r.apartment_id===selectedApartmentId);
+  const selectedPendingInvitation=invitations.find((x:any)=>x.apartment_id===selectedApartmentId&&x.status==="pending"&&new Date(x.expires_at)>new Date());
   const selectedApartmentIssues=(managerData?.issues||[]).filter((i:any)=>i.apartment_id===selectedApartmentId);
   const selectedApartmentFees=fees.filter((f:any)=>f.apartment_id===selectedApartmentId);
   const selectedApartmentOutstanding=selectedApartmentFees.find((f:any)=>effectiveFeeStatus(f)!=="paid");
@@ -625,6 +677,12 @@ export default function Home(){
       {filteredManagerIssues.length===0?<p>No issues in this filter.</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
     </div>
 
+    {lastInviteLink&&<div className="card inviteLinkCard">
+      <div className="row"><div><h2>Tenant Invitation Link</h2><div className="muted">Send this secure link to the invited tenant.</div></div><button className="secondary" onClick={()=>setLastInviteLink("")}>Close</button></div>
+      <input value={lastInviteLink} readOnly onFocus={e=>e.currentTarget.select()}/>
+      <button className="primary full" onClick={()=>copyInvite(lastInviteLink)}>Copy Link</button>
+    </div>}
+
     <div className="card">
       <div className="row">
         <div>
@@ -661,7 +719,18 @@ export default function Home(){
         <div className="summaryBox">
           <div className="muted">Tenant</div>
           <div className="summaryValue">{selectedApartmentCommunity?.tenant_name||"Vacant"}</div>
-          <div className="muted">{selectedApartmentCommunity?"Active tenant account":"No active tenant"}</div>
+          {selectedApartmentCommunity
+            ? <div className="muted">Active tenant account</div>
+            : selectedPendingInvitation
+              ? <>
+                  <div className="muted">Invitation pending: {selectedPendingInvitation.email}</div>
+                  <button className="secondary summaryAction" onClick={()=>copyInvite(inviteUrl(selectedPendingInvitation.token))}>Copy Invite Link</button>
+                </>
+              : <>
+                  <div className="muted">No active tenant</div>
+                  <button className="primary summaryAction" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>Invite Tenant</button>
+                </>
+          }
         </div>
 
         <div className="summaryBox">
@@ -749,5 +818,13 @@ export default function Home(){
     </div>
 
 
+    {inviteApartment&&<div className="modal"><div className="modalcard">
+      <h2>Invite tenant — Apartment {inviteApartment.apartment_number}</h2>
+      <p>The invitation will be securely linked to {managerData?.selectedBuilding?.name}, Apartment {inviteApartment.apartment_number}.</p>
+      <label>Tenant email</label>
+      <input type="email" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="tenant@example.com"/>
+      <button className="primary full" disabled={!inviteEmail.trim()} onClick={createTenantInvitation}>Create Invitation</button>
+      <button className="secondary full" onClick={()=>{setInviteApartment(null);setInviteEmail("")}}>Cancel</button>
+    </div></div>}
   </main>
 }

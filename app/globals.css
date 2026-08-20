@@ -97,3 +97,5 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
 .buildingPickerRow{display:flex;gap:12px;align-items:flex-end}.buildingPickerField{flex:1}.createBuildingButton{white-space:nowrap;margin-bottom:0}@media(max-width:700px){.buildingPickerRow{flex-direction:column;align-items:stretch}.createBuildingButton{width:100%}}
 
 .newBuildingCard{max-width:680px;margin:28px auto}.setupHint{margin-top:8px}.createBuildingActions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}@media(max-width:620px){.createBuildingActions{flex-direction:column-reverse}.createBuildingActions button{width:100%}}
+
+.summaryAction{margin-top:10px;width:100%}.inviteLinkCard input{margin-top:12px}
