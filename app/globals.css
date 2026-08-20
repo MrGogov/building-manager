@@ -256,19 +256,74 @@ button:not(:disabled):active{
 }
 button:disabled{cursor:not-allowed;opacity:.58}
 
-.textButton{background:transparent;color:#4c7657;box-shadow:none!important;margin-top:6px;padding:8px 12px}
-@media(hover:hover) and (pointer:fine){.textButton:not(:disabled):hover{background:#f0f5f1;transform:none}}
 
-.notificationSettingsModal{max-width:560px}
-.compactButton{padding:8px 12px;min-width:44px}
-.notificationPermissionBox{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
-.notificationChoiceList{display:grid;gap:10px;margin:16px 0}
-.notificationChoice{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fbfcfb;cursor:pointer}
-.notificationChoice input{width:20px;height:20px;margin-top:2px;flex:0 0 auto}
-.notificationChoice span{display:grid;gap:3px}
-.notificationChoice small{color:var(--muted);font-weight:500}
-.notificationStageNote{padding:12px 14px;margin:8px 0 14px;border-radius:14px;background:#f3f7f4;color:var(--muted);font-size:13px;line-height:1.45}
+/* Building Community dark mode */
+.themeToggle{
+  width:48px;min-width:48px;height:48px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:14px;background:#edf3ee;color:#24312a;
+  transition:transform .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.themeToggle:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.10)}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#212121;
+  --card:#2b2b2b;
+  --ink:#f3f3f3;
+  --muted:#b7b7b7;
+  --line:#444444;
+  --green:#78b77b;
+  --yellow:#e9c65b;
+  --red:#df6d67;
+}
+html[data-theme="dark"] body{background:#212121;color:#f3f3f3}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .modalcard,
+html[data-theme="dark"] .customerPortfolioCard{background:#2b2b2b;border-color:#444}
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select{background:#303030;color:#f3f3f3;border-color:#4b4b4b}
+html[data-theme="dark"] input:disabled{background:#292929;color:#aaa}
+html[data-theme="dark"] p,
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] .residentLabel,
+html[data-theme="dark"] .legend{color:#b7b7b7}
+html[data-theme="dark"] .secondary,
+html[data-theme="dark"] .bellButton,
+html[data-theme="dark"] .themeToggle,
+html[data-theme="dark"] .languageSelect{background:#343a36;color:#e8eee9;border-color:#4a514c}
+html[data-theme="dark"] .danger{background:#4a2c2b;color:#ffb6b1}
+html[data-theme="dark"] .tag{background:#383d3a;color:#e6ebe7}
+html[data-theme="dark"] .notice{background:#343434;color:#efefef}
+html[data-theme="dark"] .notice.error,
+html[data-theme="dark"] .error{background:#4a2928;color:#ffb7b2}
+html[data-theme="dark"] .notice.success,
+html[data-theme="dark"] .success{background:#284331;color:#bde9c6}
+html[data-theme="dark"] .yellowChoice{background:#4b4324;color:#ffe694}
+html[data-theme="dark"] .redChoice{background:#4a2928;color:#ffb7b2}
+html[data-theme="dark"] .feePaid{background:#284331;color:#bde9c6}
+html[data-theme="dark"] .feePending,
+html[data-theme="dark"] .feeAlertLabel{background:#4b4324;color:#ffe694}
+html[data-theme="dark"] .feeOverdue,
+html[data-theme="dark"] .feeGlowRed .feeAlertLabel{background:#4a2928;color:#ffb7b2}
+html[data-theme="dark"] .communityStage{background:linear-gradient(180deg,#292929,#252525);border-color:#464646}
+html[data-theme="dark"] .managerHub{background:#283845;color:#d8eaff;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+html[data-theme="dark"] .residentAvatar{background:#303030}
+html[data-theme="dark"] .managerTabs{background:#292d2a}
+html[data-theme="dark"] .managerTab{color:#bfc8c2}
+html[data-theme="dark"] .managerTabActive{background:#3a403c;color:#fff}
+html[data-theme="dark"] .teamInviteBox,
+html[data-theme="dark"] .notificationPermissionBox,
+html[data-theme="dark"] .notificationStageNote,
+html[data-theme="dark"] .customerBuildingsPanel{background:#292929;border-color:#444;color:#e9e9e9}
+html[data-theme="dark"] .teamMemberRow,
+html[data-theme="dark"] .issue,
+html[data-theme="dark"] .apt{border-color:#444}
+html[data-theme="dark"] a{color:#8fc7ff}
+html[data-theme="dark"] ::placeholder{color:#888}
+html[data-theme="dark"] .modal{background:rgba(0,0,0,.62)}
+html[data-theme="dark"] .profilePhoto{background:#303030}
+html[data-theme="dark"] .photoButton{background:#343a36;color:#e8eee9}
 @media(max-width:620px){
-  .notificationPermissionBox{align-items:stretch;flex-direction:column}
-  .notificationPermissionBox button{width:100%}
+  .themeToggle{width:44px;min-width:44px;height:44px}
 }

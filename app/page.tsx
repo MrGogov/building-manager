@@ -8,6 +8,7 @@ type Role="company_admin"|"manager"|"tenant"|null;
 export default function Home(){
   const s=createClient();
   const{language,setLanguage,t,dateLocale}=useLanguage();
+  const[theme,setTheme]=useState<"light"|"dark">("light");
   const[session,setSession]=useState<any>(null);
   const[role,setRole]=useState<Role>(null);
   const[loading,setLoading]=useState(true);
@@ -126,6 +127,18 @@ export default function Home(){
   const[selectedApartmentId,setSelectedApartmentId]=useState("");
   const[feeAmount,setFeeAmount]=useState("");
   const[feeDueDay,setFeeDueDay]=useState("1");
+
+  useEffect(()=>{
+    const saved=typeof window!=="undefined"?localStorage.getItem("bc-theme"):null;
+    const initial=saved==="dark"?"dark":"light";
+    setTheme(initial);
+    document.documentElement.setAttribute("data-theme",initial);
+  },[]);
+  useEffect(()=>{
+    if(typeof document==="undefined")return;
+    document.documentElement.setAttribute("data-theme",theme);
+    localStorage.setItem("bc-theme",theme);
+  },[theme]);
 
   useEffect(()=>{if(session&&role==="manager"&&selectedBuildingId)loadEmergencyContacts(selectedBuildingId)},[selectedBuildingId]);
   useEffect(()=>{
@@ -1335,6 +1348,7 @@ export default function Home(){
     <option value="en">EN</option>
     <option value="bg">BG</option>
   </select>;
+  const themeToggle=<button className="themeToggle" onClick={()=>setTheme(v=>v==="dark"?"light":"dark")} aria-label={t(theme==="dark"?"Switch to light mode":"Switch to dark mode")} title={t(theme==="dark"?"Switch to light mode":"Switch to dark mode")}>{theme==="dark"?"☀️":"🌙"}</button>;
 
   const accountSettingsModal=showAccountSettings&&<div className="modal"><div className="modalcard notificationSettingsModal">
     <div className="row"><div><h2>👤 {t("Account Settings")}</h2><div className="muted">{t("Update your profile or change your password.")}</div></div><button className="secondary compactButton" onClick={()=>setShowAccountSettings(false)}>✕</button></div>
@@ -1388,7 +1402,7 @@ export default function Home(){
   if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
   if(!session)return <main className="shell"><div className="card authCard" onKeyDown={handleAuthKeyDown}>
-    <div className="row"><h1>🏠 {t("Building Community")}</h1>{languageSelector}</div><p>{t("Sign in to continue.")}</p>
+    <div className="row"><h1>🏠 {t("Building Community")}</h1><div className="headerActions">{languageSelector}{themeToggle}</div></div><p>{t("Sign in to continue.")}</p>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     
     <label>{t("Email")}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
@@ -1420,7 +1434,7 @@ export default function Home(){
         if(target.tagName!=="BUTTON"&&target.tagName!=="SELECT"){e.preventDefault();completeFirstLoginPasswordChange()}
       }
     }}>
-      <div className="row"><h1>🔐 {t("Change your temporary password")}</h1>{languageSelector}</div>
+      <div className="row"><h1>🔐 {t("Change your temporary password")}</h1><div className="headerActions">{languageSelector}{themeToggle}</div></div>
       <p>{t("For security, you must choose your own password before continuing to Building Community.")}</p>
       {error&&<div className="notice error">{error}</div>}
       {msg&&<div className="notice success">{msg}</div>}
@@ -1443,6 +1457,7 @@ export default function Home(){
         <div><b>🏠 {tenantData.building.name}</b><div className="muted">{t("Resident Portal")} • {t("Apartment")} {tenantData.apartment.apartment_number}</div></div>
         <div className="headerActions">
           {languageSelector}
+          {themeToggle}
           <button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button>
           <button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button>
           <button className="bellButton" onClick={markNotificationsSeen} aria-label="Notifications">
@@ -1576,7 +1591,7 @@ export default function Home(){
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
+    <div className="top"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}{themeToggle}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     {accountSettingsModal}
     {notificationSettingsModal}
