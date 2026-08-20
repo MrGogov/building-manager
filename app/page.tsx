@@ -19,6 +19,13 @@ export default function Home(){
 
   const[managerData,setManagerData]=useState<any>(null);
   const[selectedBuildingId,setSelectedBuildingId]=useState("");
+  const[team,setTeam]=useState<any[]>([]);
+  const[managerInvites,setManagerInvites]=useState<any[]>([]);
+  const[teamInviteEmail,setTeamInviteEmail]=useState("");
+  const[teamInviteBuildings,setTeamInviteBuildings]=useState<string[]>([]);
+  const[lastManagerInviteLink,setLastManagerInviteLink]=useState("");
+  const[editingManager,setEditingManager]=useState<any>(null);
+  const[editingManagerBuildings,setEditingManagerBuildings]=useState<string[]>([]);
   const[tenantData,setTenantData]=useState<any>(null);
   const[issues,setIssues]=useState<any[]>([]);
   const[announcements,setAnnouncements]=useState<any[]>([]);
@@ -33,7 +40,7 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[issueApartmentFocus,setIssueApartmentFocus]=useState<string|null>(null);
-  const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
+  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team">("dashboard");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
   const[buildingNoticesOpen,setBuildingNoticesOpen]=useState(false);
@@ -132,24 +139,25 @@ export default function Home(){
   }
 
   async function loadManager(uid:string,profile:any){
-    const {data:m,error:me}=await s.from("company_members").select("company_id").eq("user_id",uid).limit(1);
+    const {data:m,error:me}=await s.from("company_members").select("company_id,role").eq("user_id",uid).limit(1);
     if(me){setError(me.message);return}
     if(!m?.[0]){
-      setManagerData({profile,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
+      setManagerData({profile,companyId:null,memberRole:null,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
       setSelectedBuildingId("");
-      setAnnouncements([]);setFees([]);setCommunity([]);setInvitations([]);
+      setAnnouncements([]);setFees([]);setCommunity([]);setInvitations([]);setTeam([]);setManagerInvites([]);
       return
     }
 
-    const {data:b,error:be}=await s.from("buildings")
-      .select("id,name,address,total_apartments")
-      .eq("company_id",m[0].company_id)
-      .order("name");
+    const memberRole=m[0].role;
+    const companyId=m[0].company_id;
+    const {data:b,error:be}=await s.rpc("get_accessible_buildings");
     if(be){setError(be.message);return}
 
     const buildings=b||[];
+    if(memberRole==="company_admin") await loadTeamData();
+
     if(!buildings.length){
-      setManagerData({profile,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
+      setManagerData({profile,companyId,memberRole,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
       setSelectedBuildingId("");
       setAnnouncements([]);setFees([]);setCommunity([]);setInvitations([]);
       return
@@ -161,10 +169,21 @@ export default function Home(){
       ||buildings[0].id;
     setSelectedBuildingId(preferred);
     if(typeof window!=="undefined")localStorage.setItem("bm_selected_building",preferred);
-    await loadManagerBuilding(uid,profile,buildings,preferred);
+    await loadManagerBuilding(uid,profile,buildings,preferred,memberRole,companyId);
   }
 
-  async function loadManagerBuilding(uid:string,profile:any,buildings:any[],buildingId:string){
+  async function loadTeamData(){
+    const [{data:tdata,error:te},{data:idata,error:ie}]=await Promise.all([
+      s.rpc("get_company_team"),
+      s.rpc("get_pending_manager_invitations")
+    ]);
+    if(te||ie){setError((te||ie)?.message||"Failed to load team.");return}
+    setTeam(tdata||[]);
+    setManagerInvites(idata||[]);
+  }
+
+
+  async function loadManagerBuilding(uid:string,profile:any,buildings:any[],buildingId:string,memberRole?:string,companyId?:string){
     setError("");
     const building=buildings.find((x:any)=>x.id===buildingId)||null;
     if(!building)return;
@@ -186,7 +205,7 @@ export default function Home(){
     setFees(f||[]);
     setCommunity(c||[]);
     setInvitations(inv||[]);
-    setManagerData({profile,buildings,selectedBuilding:building,apartments:aps,issues:i||[]});
+    setManagerData((prev:any)=>({profile,companyId:companyId||prev?.companyId||null,memberRole:memberRole||prev?.memberRole||null,buildings,selectedBuilding:building,apartments:aps,issues:i||[]}));
 
     // Apartment selection belongs to the selected building.
     const keep=aps.find((x:any)=>x.id===selectedApartmentId);
@@ -219,7 +238,7 @@ export default function Home(){
     setApartmentOverviewOpen(false);
     setBuildingNoticesOpen(false);
     setMsg("");setError("");
-    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId,managerData.memberRole,managerData.companyId);
   }
 
   function openApartmentFromStatus(apartmentId:string){
@@ -288,6 +307,60 @@ export default function Home(){
     if(error){setError(error.message);return}
     setMsg("Pending invitation revoked.");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
+  }
+
+  function managerInviteUrl(token:string){
+    return `${location.origin}/manager/invite?token=${encodeURIComponent(token)}`;
+  }
+
+  async function createManagerInvite(){
+    if(managerData?.memberRole!=="company_admin")return;
+    if(!teamInviteEmail.trim()||teamInviteBuildings.length===0){
+      setError(t("Enter an email and select at least one building."));return
+    }
+    setError("");setMsg("");
+    const {data,error}=await s.rpc("create_manager_invitation",{
+      p_email:teamInviteEmail.trim().toLowerCase(),
+      p_building_ids:teamInviteBuildings
+    });
+    if(error){setError(error.message);return}
+    const row=data?.[0];
+    if(row?.token){
+      const url=managerInviteUrl(row.token);
+      setLastManagerInviteLink(url);
+      try{await navigator.clipboard.writeText(url)}catch{}
+    }
+    setTeamInviteEmail("");setTeamInviteBuildings([]);
+    setMsg(t("Manager invitation created."));
+    await loadTeamData();
+  }
+
+  async function revokeManagerInvite(id:string){
+    if(!window.confirm(t("Revoke this manager invitation?")))return;
+    const {error}=await s.rpc("revoke_manager_invitation",{p_invitation_id:id});
+    if(error){setError(error.message);return}
+    setMsg(t("Manager invitation revoked."));
+    await loadTeamData();
+  }
+
+  async function saveManagerBuildings(){
+    if(!editingManager)return;
+    const {error}=await s.rpc("set_manager_buildings",{
+      p_manager_id:editingManager.user_id,
+      p_building_ids:editingManagerBuildings
+    });
+    if(error){setError(error.message);return}
+    setEditingManager(null);
+    setMsg(t("Manager building access updated."));
+    await loadTeamData();
+  }
+
+  async function removeManager(userId:string){
+    if(!window.confirm(t("Remove this manager from the company?")))return;
+    const {error}=await s.rpc("remove_company_manager",{p_manager_id:userId});
+    if(error){setError(error.message);return}
+    setMsg(t("Manager removed."));
+    await loadTeamData();
   }
 
   function inviteUrl(token:string){
@@ -776,13 +849,13 @@ export default function Home(){
               {managerData.buildings.map((b:any)=><option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
             </select>
           </div>
-          <button className="primary createBuildingButton" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button>
+          {managerData?.memberRole==="company_admin"&&<button className="primary createBuildingButton" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button>}
         </div>
         <div className="selectedBuildingSummary">
           <b>🏢 {managerData?.selectedBuilding?.name}</b>
           <span className="muted">{managerData?.selectedBuilding?.address}</span>
         </div>
-      </>:<><p>{t("No buildings are assigned to this management company yet.")}</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button></>}
+      </>:<><p>{t("No buildings are assigned to this management company yet.")}</p>{managerData?.memberRole==="company_admin"&&<button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button>}</>}
     </div>
 
     <div className="managerTabs">
@@ -793,6 +866,10 @@ export default function Home(){
         {t("Pending Tenant Fees")}
         {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
       </button>
+      {managerData?.memberRole==="company_admin"&&<button className={`managerTab ${managerTab==="team"?"managerTabActive":""}`} onClick={()=>setManagerTab("team")}>
+        {t("Team Management")}
+        {team.filter((m:any)=>m.role==="manager").length>0&&<span className="tabCount">{team.filter((m:any)=>m.role==="manager").length}</span>}
+      </button>}
     </div>
 
     {managerTab==="dashboard"&&<>
@@ -1157,6 +1234,79 @@ export default function Home(){
     </div>
 
     </>}
+
+    {managerTab==="team"&&managerData?.memberRole==="company_admin"&&<>
+      <div className="card">
+        <div className="row"><div><h2>👥 {t("Team Management")}</h2><div className="muted">{t("Invite managers and control which buildings they can access.")}</div></div><span className="tag">{team.length}</span></div>
+
+        <div className="teamInviteBox">
+          <h3>{t("Invite Manager")}</h3>
+          <label>{t("Manager email")}</label>
+          <input type="email" value={teamInviteEmail} onChange={e=>setTeamInviteEmail(e.target.value)} placeholder="manager@example.com"/>
+          <label>{t("Building access")}</label>
+          <div className="buildingAccessGrid">
+            {(managerData?.buildings||[]).map((b:any)=><label className="buildingAccessOption" key={b.id}>
+              <input type="checkbox" checked={teamInviteBuildings.includes(b.id)} onChange={e=>setTeamInviteBuildings(prev=>e.target.checked?[...prev,b.id]:prev.filter(x=>x!==b.id))}/>
+              <span><b>{b.name}</b><small>{b.address}</small></span>
+            </label>)}
+          </div>
+          <button className="primary full" onClick={createManagerInvite}>{t("Create Manager Invitation")}</button>
+        </div>
+
+        {lastManagerInviteLink&&<div className="inviteLinkCard teamInviteLink">
+          <div className="row"><b>{t("Manager Invitation Link")}</b><button className="secondary" onClick={()=>setLastManagerInviteLink("")}>{t("Close")}</button></div>
+          <input value={lastManagerInviteLink} readOnly onFocus={e=>e.currentTarget.select()}/>
+          <button className="secondary full" onClick={()=>navigator.clipboard.writeText(lastManagerInviteLink)}>{t("Copy Link")}</button>
+        </div>}
+
+        <h3>{t("Current Team")}</h3>
+        {team.map((m:any)=><div className="teamMemberRow" key={m.user_id}>
+          <div>
+            <b>{m.full_name||m.email}</b>
+            <div className="muted">{m.email}</div>
+            <div className="teamBuildingChips">
+              {m.role==="company_admin"
+                ? <span className="tag">{t("All buildings")}</span>
+                : (m.building_ids||[]).map((bid:string)=>{
+                    const b=managerData.buildings.find((x:any)=>x.id===bid);
+                    return b?<span className="tag" key={bid}>{b.name}</span>:null
+                  })}
+            </div>
+          </div>
+          <div className="teamMemberActions">
+            <span className={`feeBadge ${m.role==="company_admin"?"feePaid":"feePending"}`}>{m.role==="company_admin"?t("Company Admin"):t("Manager")}</span>
+            {m.role==="manager"&&<>
+              <button className="secondary" onClick={()=>{setEditingManager(m);setEditingManagerBuildings(m.building_ids||[])}}>{t("Edit Access")}</button>
+              <button className="danger" onClick={()=>removeManager(m.user_id)}>{t("Remove")}</button>
+            </>}
+          </div>
+        </div>)}
+
+        {managerInvites.length>0&&<>
+          <h3>{t("Pending Manager Invitations")}</h3>
+          {managerInvites.map((inv:any)=><div className="teamMemberRow" key={inv.invitation_id}>
+            <div><b>{inv.email}</b><div className="muted">{t("Expires")} {new Date(inv.expires_at).toLocaleString(dateLocale)}</div></div>
+            <div className="teamMemberActions">
+              <button className="secondary" onClick={()=>navigator.clipboard.writeText(managerInviteUrl(inv.token))}>{t("Copy Link")}</button>
+              <button className="danger" onClick={()=>revokeManagerInvite(inv.invitation_id)}>{t("Revoke")}</button>
+            </div>
+          </div>)}
+        </>}
+      </div>
+    </>}
+
+    {editingManager&&<div className="modal"><div className="modalcard">
+      <h2>{t("Edit Manager Access")}</h2>
+      <p>{editingManager.full_name||editingManager.email}</p>
+      <div className="buildingAccessGrid">
+        {(managerData?.buildings||[]).map((b:any)=><label className="buildingAccessOption" key={b.id}>
+          <input type="checkbox" checked={editingManagerBuildings.includes(b.id)} onChange={e=>setEditingManagerBuildings(prev=>e.target.checked?[...prev,b.id]:prev.filter(x=>x!==b.id))}/>
+          <span><b>{b.name}</b><small>{b.address}</small></span>
+        </label>)}
+      </div>
+      <button className="primary full" onClick={saveManagerBuildings}>{t("Save Access")}</button>
+      <button className="secondary full" onClick={()=>setEditingManager(null)}>{t("Cancel")}</button>
+    </div></div>}
 
     {editingNotice&&<div className="modal"><div className="modalcard">
       <h2>{t("Edit Notice")}</h2>

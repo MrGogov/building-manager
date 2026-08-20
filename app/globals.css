@@ -151,3 +151,12 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
 @media(max-width:620px){
   .sectionToggleHeader{align-items:center}
 }
+
+.teamInviteBox{margin-top:18px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fbfcfa}
+.buildingAccessGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}
+.buildingAccessOption{display:flex;align-items:flex-start;gap:10px;margin:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:white;cursor:pointer}
+.buildingAccessOption input{width:auto;margin-top:3px}.buildingAccessOption span{display:flex;flex-direction:column;gap:2px}.buildingAccessOption small{color:var(--muted)}
+.teamInviteLink{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#f7faf7}
+.teamMemberRow{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 0;border-bottom:1px solid var(--line)}.teamMemberRow:last-child{border-bottom:0}
+.teamMemberActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teamBuildingChips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+@media(max-width:700px){.buildingAccessGrid{grid-template-columns:1fr}.teamMemberRow{align-items:flex-start;flex-direction:column}.teamMemberActions{width:100%;justify-content:flex-start}}
