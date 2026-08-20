@@ -289,20 +289,65 @@ export default function Home(){
     if(!isPlatformOwner)return;
     setError("");setMsg("");setExportingCustomerId(customer.id);
     const {data,error}=await s.functions.invoke("export-customer-data",{body:{company_id:customer.id}});
-    setExportingCustomerId(null);
-    if(error){setError(error.message);return}
-    if(data?.error){setError(data.error);return}
-    if(!data?.backup){setError(t("Customer backup could not be created."));return}
-    const safeName=String(customer.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"customer";
-    const stamp=new Date().toISOString().slice(0,10);
-    const blob=new Blob([JSON.stringify(data.backup,null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download=`building-community-${safeName}-backup-${stamp}.json`;
-    document.body.appendChild(a);a.click();a.remove();
-    URL.revokeObjectURL(url);
-    setMsg(t("Customer backup downloaded."));
+    if(error){setExportingCustomerId(null);setError(error.message);return}
+    if(data?.error){setExportingCustomerId(null);setError(data.error);return}
+    const backup=data?.backup;
+    if(!backup){setExportingCustomerId(null);setError(t("Customer backup could not be created."));return}
+    try{
+      const XLSX:any=await import("xlsx");
+      const wb=XLSX.utils.book_new();
+      const addSheet=(name:string,rows:any[])=>{
+        const clean=(rows||[]).map((row:any)=>{
+          const out:any={};
+          for(const [k,v] of Object.entries(row||{})){
+            if(v===null||v===undefined)out[k]="";
+            else if(typeof v==="object")out[k]=JSON.stringify(v);
+            else out[k]=v;
+          }
+          return out;
+        });
+        const ws=XLSX.utils.json_to_sheet(clean.length?clean:[{info:t("No records")}]);
+        if(clean.length){
+          ws["!autofilter"]={ref:ws["!ref"]};
+          const headers=Object.keys(clean[0]||{});
+          ws["!cols"]=headers.map((h:string)=>({wch:Math.min(38,Math.max(12,h.length+2,...clean.slice(0,100).map((r:any)=>String(r[h]??"").length+2)))}));
+        }
+        XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));
+      };
+      const company=backup.company||{};
+      const summary=[
+        {Field:t("Customer"),Value:company.name||""},
+        {Field:t("Company email"),Value:company.email||""},
+        {Field:t("Backup created"),Value:backup.exported_at||new Date().toISOString()},
+        {Field:t("Buildings"),Value:(backup.buildings||[]).length},
+        {Field:t("Apartments"),Value:(backup.apartments||[]).length},
+        {Field:t("Residents"),Value:(backup.tenant_profiles||[]).length},
+        {Field:t("Issues"),Value:(backup.issues||[]).length},
+        {Field:t("Notices"),Value:(backup.announcements||[]).length},
+        {Field:t("Fee records"),Value:(backup.fee_records||[]).length}
+      ];
+      addSheet(t("Summary"),summary);
+      addSheet(t("Buildings"),backup.buildings||[]);
+      addSheet(t("Apartments"),backup.apartments||[]);
+      addSheet(t("Residents"),backup.tenant_profiles||[]);
+      addSheet(t("Tenancies"),backup.apartment_tenants||[]);
+      addSheet(t("Fees"),backup.fee_records||[]);
+      addSheet(t("Issues"),backup.issues||[]);
+      addSheet(t("Notices"),backup.announcements||[]);
+      addSheet(t("Team"),backup.company_members||[]);
+      addSheet(t("Tenant Invitations"),backup.tenant_invitations||[]);
+      addSheet(t("Manager Assignments"),backup.manager_buildings||[]);
+      addSheet(t("Manager Invitations"),backup.manager_invitations||[]);
+      addSheet(t("Audit Log"),backup.audit_log||[]);
+      const safeName=String(customer.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"customer";
+      const stamp=new Date().toISOString().slice(0,10);
+      XLSX.writeFile(wb,`building-community-${safeName}-backup-${stamp}.xlsx`);
+      setMsg(t("Excel customer backup downloaded."));
+    }catch(e:any){
+      setError(e?.message||t("Excel backup could not be created."));
+    }finally{
+      setExportingCustomerId(null);
+    }
   }
 
   async function openCustomerSupportWorkspace(customer:any){
@@ -1936,7 +1981,7 @@ export default function Home(){
             </div>
             <div className="teamMemberActions">
               <button className="secondary" onClick={()=>setExpandedCustomerId(expandedCustomerId===c.id?null:c.id)}>{expandedCustomerId===c.id?t("Hide Buildings"):t("View Buildings")}</button>
-              <button className="secondary" disabled={exportingCustomerId===c.id} onClick={()=>exportCustomerBackup(c)}>{exportingCustomerId===c.id?t("Exporting…"):t("Export Backup")}</button>
+              <button className="secondary" disabled={exportingCustomerId===c.id} onClick={()=>exportCustomerBackup(c)}>{exportingCustomerId===c.id?t("Exporting…"):t("Export Excel Backup")}</button>
               <button className="primary" disabled={supportWorkspaceLoading} onClick={()=>openCustomerSupportWorkspace(c)}>{supportWorkspaceLoading?t("Opening…"):t("Open Support Workspace")}</button>
               <button className="danger" onClick={()=>{setDeleteCustomer(c);setDeleteCustomerConfirm("");setError("");setMsg("")}}>{t("Remove Customer")}</button>
             </div>
