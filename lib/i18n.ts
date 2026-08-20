@@ -428,6 +428,8 @@ const bg:Record<string,string>={
   "The contacts below are provided by your building management for building-related emergencies.":"Контактите по-долу са предоставени от управлението на сградата за аварийни ситуации, свързани със сградата.",
   "No emergency contacts have been provided for this building.":"За тази сграда все още няма предоставени спешни контакти.",
   "Select a building first.":"Първо изберете сграда.",
+  "Switch to dark mode":"Превключи към тъмен режим",
+  "Switch to light mode":"Превключи към светъл режим",
 };
 
 export function useLanguage(){
