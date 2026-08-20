@@ -292,6 +292,13 @@ const bg:Record<string,string>={
   "The temporary password is not stored or shown again.":"Временната парола не се съхранява и няма да бъде показана отново.",
   "Complete all customer admin fields.":"Попълнете всички полета за клиентския администратор.",
   "Temporary password must be at least 8 characters.":"Временната парола трябва да е поне 8 символа.",
+  "Account Settings":"Настройки на профила",
+  "Update your profile or change your password.":"Обновете профила си или сменете паролата си.",
+  "Leave the password fields empty if you only want to update your name.":"Оставете полетата за парола празни, ако искате да промените само името си.",
+  "Save Account Settings":"Запази настройките на профила",
+  "Full name is required.":"Името е задължително.",
+  "Profile and password updated.":"Профилът и паролата са обновени.",
+  "Profile updated.":"Профилът е обновен.",
 };
 
 export function useLanguage(){
