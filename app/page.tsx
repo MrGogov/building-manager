@@ -168,7 +168,7 @@ export default function Home(){
     const {data,error}=await s.auth.signUp({email,password,options:{data:{full_name:fullName,role:"company_admin"}}});
     if(error){setError(error.message);return}
     if(data.session&&data.user){setSession(data.session);await bootstrap(data.user.id)}
-    else {setMsg("Account created. Confirm your email if confirmations are enabled, then log in.");setAuthMode("login")}
+    else {setMsg("Account created. Confirm your email if confirmations are enabled, then log in.")}
   }
 
   function notificationDeviceLabel(){
