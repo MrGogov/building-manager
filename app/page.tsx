@@ -34,6 +34,8 @@ export default function Home(){
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
+  const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
+  const[buildingNoticesOpen,setBuildingNoticesOpen]=useState(false);
   const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"issues"|"fees"|"fee_settings">("issues");
   const[tenantDetails,setTenantDetails]=useState<any>(null);
   const[showTenantManager,setShowTenantManager]=useState(false);
@@ -213,8 +215,24 @@ export default function Home(){
     setManagerTab("dashboard");
     setNoticeTab("create");
     setApartmentOverviewTab("issues");
+    setApartmentOverviewOpen(false);
+    setBuildingNoticesOpen(false);
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
+  }
+
+  function openApartmentFromStatus(apartmentId:string){
+    const a=managerData?.apartments?.find((x:any)=>x.id===apartmentId);
+    if(!a)return;
+    setSelectedApartmentId(apartmentId);
+    setSelectedApartment(a);
+    setFeeAmount(String(a.monthly_fee||0));
+    setFeeDueDay(String(a.fee_due_day||1));
+    setApartmentOverviewTab("issues");
+    setApartmentOverviewOpen(true);
+    setShowTenantManager(false);
+    loadApartmentTenantDetails(apartmentId);
+    setTimeout(()=>document.getElementById("apartmentOverviewCard")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
   }
 
   async function loadApartmentTenantDetails(apartmentId:string){
@@ -780,12 +798,12 @@ export default function Home(){
             const angle=(Math.PI*2*index/Math.max(community.length,1))-Math.PI/2;
             const x=50+43*Math.cos(angle);
             const y=55+38*Math.sin(angle);
-            return <div className="residentItem ovalItem" key={r.apartment_id} style={{left:`${x}%`,top:`${y}%`}}>
-              <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`${r.tenant_name} • Apartment ${r.apartment_number}`}>
+            return <button type="button" className="residentItem ovalItem residentApartmentButton" key={r.apartment_id} style={{left:`${x}%`,top:`${y}%`}} onClick={()=>openApartmentFromStatus(r.apartment_id)}>
+              <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`${r.tenant_name} • ${t("Apartment")} ${r.apartment_number}`}>
                 {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
               </div>
               <div className="residentLabel">{t("Apartment")} {r.apartment_number}</div>
-            </div>
+            </button>
           })}
         </div>
       </div>
@@ -827,18 +845,22 @@ export default function Home(){
       <button className="primary full" onClick={()=>copyInvite(lastInviteLink)}>{t("Copy Link")}</button>
     </div>}
 
-    <div className="card">
-      <div className="row">
-        <div>
+    <div className="card" id="apartmentOverviewCard">
+      <button type="button" className="sectionToggleHeader" onClick={()=>setApartmentOverviewOpen(v=>!v)} aria-expanded={apartmentOverviewOpen}>
+        <div className="sectionToggleText">
           <h2>🏠 {t("Apartment Overview")}</h2>
           <div className="muted">{t("Tenant, fees and issue history for one apartment.")}</div>
         </div>
-        {selectedApartmentCommunity
-          ? <span className={`feeBadge ${statusClass(selectedApartmentCommunity.status_color)==="residentRed"?"feeOverdue":statusClass(selectedApartmentCommunity.status_color)==="residentYellow"?"feePending":"feePaid"}`}>
-              {selectedApartmentCommunity.status_color}
-            </span>
-          : <span className="tag">{t("VACANT")}</span>}
-      </div>
+        <div className="sectionToggleRight">
+          {selectedApartmentCommunity
+            ? <span className={`feeBadge ${statusClass(selectedApartmentCommunity.status_color)==="residentRed"?"feeOverdue":statusClass(selectedApartmentCommunity.status_color)==="residentYellow"?"feePending":"feePaid"}`}>
+                {selectedApartmentCommunity.status_color}
+              </span>
+            : <span className="tag">{t("VACANT")}</span>}
+          <span className={`chevron ${apartmentOverviewOpen?"chevronOpen":""}`}>⌄</span>
+        </div>
+      </button>
+      {apartmentOverviewOpen&&<div className="collapsibleSectionBody">
 
       <label>{t("Apartment")}</label>
       <select
@@ -1006,17 +1028,22 @@ export default function Home(){
           <button className="primary full" onClick={saveApartmentFee}>{t("Save Apartment Fee")}</button>
         </div>
       </div>}
-    </div>
 
+      </div>}
+    </div>
     <div className="card noticeWorkspace">
-      <div className="row noticeWorkspaceHeader">
-        <div>
+      <button type="button" className="sectionToggleHeader noticeWorkspaceHeader" onClick={()=>setBuildingNoticesOpen(v=>!v)} aria-expanded={buildingNoticesOpen}>
+        <div className="sectionToggleText">
           <h2>📣 {t("Building Notices")}</h2>
           <div className="muted">{managerData?.selectedBuilding?.name||t("selected building")}</div>
         </div>
-        <span className="tag">{announcements.length}</span>
-      </div>
+        <div className="sectionToggleRight">
+          <span className="tag">{announcements.filter((n:any)=>!n.completed_at).length}</span>
+          <span className={`chevron ${buildingNoticesOpen?"chevronOpen":""}`}>⌄</span>
+        </div>
+      </button>
 
+      {buildingNoticesOpen&&<div className="collapsibleSectionBody">
       <div className="noticeTabs">
         <button className={`noticeTab ${noticeTab==="create"?"noticeTabActive":""}`} onClick={()=>setNoticeTab("create")}>
           {t("Create Notice")}
@@ -1094,6 +1121,8 @@ export default function Home(){
               </div>
             </div>)
         }
+      </div>}
+
       </div>}
     </div>
 
