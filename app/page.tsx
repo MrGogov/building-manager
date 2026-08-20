@@ -89,13 +89,44 @@ export default function Home(){
   },[]);
 
   useEffect(()=>{
-    s.auth.getSession().then(({data})=>{if(data.session){setSession(data.session);bootstrap(data.session.user.id)} else setLoading(false)});
+    let alive=true;
+
+    async function startSession(){
+      const {data}=await s.auth.getSession();
+      if(!alive)return;
+      if(data.session){
+        setSession(data.session);
+        await bootstrap(data.session.user.id);
+      }else setLoading(false);
+    }
+
+    startSession();
+
     const {data:{subscription}}=s.auth.onAuthStateChange((_e,ss)=>{
       setSession(ss);
       if(ss) bootstrap(ss.user.id);
       else {setRole(null);setManagerData(null);setTenantData(null);setIssues([]);setAnnouncements([]);setFees([]);setLoading(false)}
     });
-    return()=>subscription.unsubscribe();
+
+    async function onResume(){
+      if(document.visibilityState!=="visible")return;
+      const {data}=await s.auth.getSession();
+      if(!data.session)return;
+      const {data:refreshed,error:refreshError}=await s.auth.refreshSession();
+      if(refreshError)return;
+      const activeSession=refreshed.session||data.session;
+      if(activeSession){
+        setSession(activeSession);
+        await bootstrap(activeSession.user.id);
+      }
+    }
+
+    document.addEventListener("visibilitychange",onResume);
+    return()=>{
+      alive=false;
+      document.removeEventListener("visibilitychange",onResume);
+      subscription.unsubscribe();
+    };
   },[]);
 
   async function signIn(){
@@ -114,9 +145,24 @@ export default function Home(){
     else {setMsg("Account created. Confirm your email if confirmations are enabled, then log in.");setAuthMode("login")}
   }
 
-  async function bootstrap(uid:string){
+  function isFutureJwtError(error:any){
+    const message=String(error?.message||error||"").toLowerCase();
+    return message.includes("jwt issued at future")||message.includes("pgrst303");
+  }
+
+  async function bootstrap(uid:string,retried=false){
     setLoading(true);setError("");
     const {data:p,error:pe}=await s.from("profiles").select("id,full_name,email,role,avatar_url").eq("id",uid).single();
+
+    if(pe&&isFutureJwtError(pe)&&!retried){
+      // Supabase/PostgREST can very briefly see a newly-issued token as being
+      // in the future if service clocks differ by a few seconds.
+      await new Promise(resolve=>setTimeout(resolve,1800));
+      const {data:refreshed}=await s.auth.refreshSession();
+      if(refreshed.session)setSession(refreshed.session);
+      return bootstrap(uid,true);
+    }
+
     if(pe){setError(pe.message);setLoading(false);return}
     setRole(p.role);
     if(p.role==="tenant") await loadTenant(uid,p); else await loadManager(uid,p);
