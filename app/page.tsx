@@ -22,6 +22,10 @@ export default function Home(){
   const authMode:"login"="login";
   const[email,setEmail]=useState(""); const[password,setPassword]=useState(""); const[fullName,setFullName]=useState("");
   const[resetSending,setResetSending]=useState(false);
+  const[mustChangePassword,setMustChangePassword]=useState(false);
+  const[firstLoginPassword,setFirstLoginPassword]=useState("");
+  const[firstLoginConfirm,setFirstLoginConfirm]=useState("");
+  const[changingFirstPassword,setChangingFirstPassword]=useState(false);
 
   const[managerData,setManagerData]=useState<any>(null);
   const[selectedBuildingId,setSelectedBuildingId]=useState("");
@@ -48,6 +52,11 @@ export default function Home(){
   const[customerTempPassword,setCustomerTempPassword]=useState("");
   const[creatingCustomerAdmin,setCreatingCustomerAdmin]=useState(false);
   const[lastCreatedCustomer,setLastCreatedCustomer]=useState<any>(null);
+  const[customers,setCustomers]=useState<any[]>([]);
+  const[customersLoading,setCustomersLoading]=useState(false);
+  const[deleteCustomer,setDeleteCustomer]=useState<any>(null);
+  const[deleteCustomerConfirm,setDeleteCustomerConfirm]=useState("");
+  const[deletingCustomer,setDeletingCustomer]=useState(false);
   const[showAccountSettings,setShowAccountSettings]=useState(false);
   const[accountFullName,setAccountFullName]=useState("");
   const[newAccountPassword,setNewAccountPassword]=useState("");
@@ -206,6 +215,37 @@ export default function Home(){
     setLastCreatedCustomer(data);
     setMsg(t("Customer admin account created."));
     setCustomerCompanyName("");setCustomerAdminName("");setCustomerAdminEmail("");setCustomerTempPassword("");
+    await loadCustomers();
+  }
+
+  async function loadCustomers(){
+    if(!isPlatformOwner)return;
+    setCustomersLoading(true);
+    const {data,error}=await s.functions.invoke("manage-customers",{body:{action:"list"}});
+    setCustomersLoading(false);
+    if(error){setError(error.message);return}
+    if(data?.error){setError(data.error);return}
+    setCustomers(data?.customers||[]);
+  }
+
+  async function removeCustomer(){
+    if(!isPlatformOwner||!deleteCustomer)return;
+    setError("");setMsg("");
+    if(deleteCustomerConfirm!==deleteCustomer.name){
+      setError(t("Type the company name exactly to confirm deletion."));return;
+    }
+    setDeletingCustomer(true);
+    const {data,error}=await s.functions.invoke("manage-customers",{body:{
+      action:"delete",
+      company_id:deleteCustomer.id,
+      confirmation:deleteCustomerConfirm
+    }});
+    setDeletingCustomer(false);
+    if(error){setError(error.message);return}
+    if(data?.error){setError(data.error);return}
+    setDeleteCustomer(null);setDeleteCustomerConfirm("");
+    setMsg(t("Customer and associated Building Community data removed."));
+    await loadCustomers();
   }
 
   function openAccountSettings(){
@@ -231,10 +271,30 @@ export default function Home(){
     if(newAccountPassword){
       const {error:passwordError}=await s.auth.updateUser({password:newAccountPassword});
       if(passwordError){setSavingAccount(false);setError(passwordError.message);return}
+      const {error:flagError}=await s.from("profiles").update({must_change_password:false,updated_at:new Date().toISOString()}).eq("id",session.user.id);
+      if(flagError){setSavingAccount(false);setError(flagError.message);return}
+      setMustChangePassword(false);
     }
     setSavingAccount(false);
     setMsg(newAccountPassword?t("Profile and password updated."):t("Profile updated."));
     setShowAccountSettings(false);
+    await bootstrap(session.user.id);
+  }
+
+  async function completeFirstLoginPasswordChange(){
+    if(!session)return;
+    setError("");setMsg("");
+    if(firstLoginPassword.length<8){setError(t("Password must be at least 8 characters."));return}
+    if(firstLoginPassword!==firstLoginConfirm){setError(t("Passwords do not match."));return}
+    setChangingFirstPassword(true);
+    const {error:passwordError}=await s.auth.updateUser({password:firstLoginPassword});
+    if(passwordError){setChangingFirstPassword(false);setError(passwordError.message);return}
+    const {error:profileError}=await s.from("profiles").update({must_change_password:false,updated_at:new Date().toISOString()}).eq("id",session.user.id);
+    if(profileError){setChangingFirstPassword(false);setError(profileError.message);return}
+    setChangingFirstPassword(false);
+    setFirstLoginPassword("");setFirstLoginConfirm("");
+    setMustChangePassword(false);
+    setMsg(t("Password changed successfully. Welcome to Building Community."));
     await bootstrap(session.user.id);
   }
 
@@ -402,7 +462,7 @@ export default function Home(){
 
   async function bootstrap(uid:string,retried=false){
     setLoading(true);setError("");
-    const {data:p,error:pe}=await s.from("profiles").select("id,full_name,email,role,avatar_url").eq("id",uid).single();
+    const {data:p,error:pe}=await s.from("profiles").select("id,full_name,email,role,avatar_url,must_change_password").eq("id",uid).single();
 
     if(pe&&isFutureJwtError(pe)&&!retried){
       // Supabase/PostgREST can very briefly see a newly-issued token as being
@@ -415,6 +475,8 @@ export default function Home(){
 
     if(pe){setError(pe.message);setLoading(false);return}
     setRole(p.role);
+    setMustChangePassword(!!p.must_change_password);
+    if(p.must_change_password){setLoading(false);return}
     await loadNotificationPreferences(uid);
     if(p.role==="tenant") await loadTenant(uid,p); else await loadManager(uid,p);
     setLoading(false);
@@ -1124,6 +1186,26 @@ export default function Home(){
     }
   </div></main>;
 
+  if(mustChangePassword&&session)return <main className="shell">
+    <div className="card authCard" onKeyDown={e=>{
+      if(e.key==="Enter"&&!e.shiftKey){
+        const target=e.target as HTMLElement;
+        if(target.tagName!=="BUTTON"&&target.tagName!=="SELECT"){e.preventDefault();completeFirstLoginPasswordChange()}
+      }
+    }}>
+      <div className="row"><h1>🔐 {t("Change your temporary password")}</h1>{languageSelector}</div>
+      <p>{t("For security, you must choose your own password before continuing to Building Community.")}</p>
+      {error&&<div className="notice error">{error}</div>}
+      {msg&&<div className="notice success">{msg}</div>}
+      <label>{t("New password")}</label>
+      <input type="password" autoComplete="new-password" value={firstLoginPassword} onChange={e=>setFirstLoginPassword(e.target.value)} placeholder={t("Minimum 8 characters")}/>
+      <label>{t("Confirm new password")}</label>
+      <input type="password" autoComplete="new-password" value={firstLoginConfirm} onChange={e=>setFirstLoginConfirm(e.target.value)}/>
+      <button className="primary full" disabled={changingFirstPassword} onClick={completeFirstLoginPasswordChange}>{changingFirstPassword?t("Saving…"):t("Set New Password")}</button>
+      <button className="secondary full" disabled={changingFirstPassword} onClick={()=>s.auth.signOut()}>{t("Sign out")}</button>
+    </div>
+  </main>;
+
   if(role==="tenant"&&tenantData){
     const active=issues.find(i=>i.status!=="resolved");
     const color=active?.severity==="red"?"#df6d67":active?.severity==="yellow"?"#e9c65b":"#78b77b";
@@ -1281,7 +1363,7 @@ export default function Home(){
         {t("Team Management")}
         {team.filter((m:any)=>m.role==="manager").length>0&&<span className="tabCount">{team.filter((m:any)=>m.role==="manager").length}</span>}
       </button>}
-      {isPlatformOwner&&<button className={`managerTab ${managerTab==="customers"?"managerTabActive":""}`} onClick={()=>setManagerTab("customers")}>
+      {isPlatformOwner&&<button className={`managerTab ${managerTab==="customers"?"managerTabActive":""}`} onClick={()=>{setManagerTab("customers");loadCustomers()}}>
         {t("Customer Administration")}
       </button>}
     </div>
@@ -1736,8 +1818,28 @@ export default function Home(){
           <div>{t("Admin email")}: {lastCreatedCustomer.admin_email}</div>
           <div className="muted">{t("The temporary password is not stored or shown again.")}</div>
         </div>}
+
+        <div className="row customerListHeader"><div><h3>{t("Current Customers")}</h3><div className="muted">{t("Removing a customer permanently removes its buildings and related operational data.")}</div></div><button className="secondary" disabled={customersLoading} onClick={loadCustomers}>{customersLoading?t("Loading…"):t("Refresh")}</button></div>
+        {customersLoading?<p>{t("Loading…")}</p>:customers.length===0?<p>{t("No customer accounts found.")}</p>:customers.map((c:any)=><div className="teamMemberRow" key={c.id}>
+          <div>
+            <b>{c.name}</b>
+            <div className="muted">{c.admin?.full_name||t("Company Admin")} • {c.admin?.email||c.email||""}</div>
+            <div className="teamBuildingChips"><span className="tag">{c.building_count||0} {(c.building_count||0)===1?t("building"):t("buildings")}</span></div>
+          </div>
+          <div className="teamMemberActions"><button className="danger" onClick={()=>{setDeleteCustomer(c);setDeleteCustomerConfirm("");setError("");setMsg("")}}>{t("Remove Customer")}</button></div>
+        </div>)}
       </div>
     </>}
+
+    {deleteCustomer&&<div className="modal"><div className="modalcard">
+      <h2>⚠️ {t("Remove Customer")}</h2>
+      <p>{t("This permanently removes the customer, its buildings, apartments, notices, issues, fee records, invitations and accounts that are no longer used elsewhere.")}</p>
+      <div className="notice error"><b>{deleteCustomer.name}</b><div>{t("This action cannot be undone.")}</div></div>
+      <label>{t("Type the company name to confirm")}</label>
+      <input value={deleteCustomerConfirm} onChange={e=>setDeleteCustomerConfirm(e.target.value)} placeholder={deleteCustomer.name}/>
+      <button className="danger full" disabled={deletingCustomer||deleteCustomerConfirm!==deleteCustomer.name} onClick={removeCustomer}>{deletingCustomer?t("Removing…"):t("Permanently Remove Customer")}</button>
+      <button className="secondary full" disabled={deletingCustomer} onClick={()=>{setDeleteCustomer(null);setDeleteCustomerConfirm("")}}>{t("Cancel")}</button>
+    </div></div>}
 
     {editingManager&&<div className="modal"><div className="modalcard">
       <h2>{t("Edit Manager Access")}</h2>
