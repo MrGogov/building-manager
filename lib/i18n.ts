@@ -269,6 +269,13 @@ const bg:Record<string,string>={
   "Notifications enabled on this device.":"Известията са разрешени на това устройство.",
   "Notifications are not supported on this browser.":"Този браузър не поддържа известия.",
   "Notification permission is blocked in your browser settings.":"Разрешението за известия е блокирано в настройките на браузъра.",
+  "Push connected":"Push е свързан",
+  "Connect push notifications":"Свържи push известията",
+  "Push notifications are connected on this device.":"Push известията са свързани на това устройство.",
+  "Push notifications are not supported on this browser.":"Този браузър не поддържа push известия.",
+  "Could not register this device for push notifications.":"Устройството не можа да бъде регистрирано за push известия.",
+  "This device is registered for real push notifications.":"Това устройство е регистрирано за реални push известия.",
+  "Enable and connect this device to receive notifications while the app is closed.":"Разрешете и свържете устройството, за да получавате известия и когато приложението е затворено.",
 };
 
 export function useLanguage(){
