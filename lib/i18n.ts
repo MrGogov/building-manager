@@ -114,10 +114,8 @@ const bg:Record<string,string>={
   "Copy Link":"Копирай линка",
   "Tenant email":"Имейл на живущия",
   "Create Invitation":"Създай покана",
-  "Create New Building":"Създай нова сграда",
   "New building setup":"Настройка на нова сграда",
   "Back to Dashboard":"Обратно към таблото",
-  "Create New Building":"Създай нова сграда",
   "Building name":"Име на сградата",
   "Address":"Адрес",
   "City":"Град",
@@ -130,7 +128,6 @@ const bg:Record<string,string>={
   "Complete Invitation":"Завърши поканата",
   "Invitation accepted. Your account is now linked to Apartment":"Поканата е приета. Профилът ви вече е свързан с апартамент",
 
-  "Invitation accepted. Your account is now linked to Apartment":"Поканата е приета. Профилът ви вече е свързан с апартамент",
   "Open Building Manager":"Отвори приложението",
   "Invitation not found.":"Поканата не е намерена.",
   "Create Tenant Account":"Създай акаунт на живущ",
