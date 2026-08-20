@@ -223,6 +223,11 @@ const bg:Record<string,string>={
   "Create Manager Account":"Създай акаунт на управител",
   "Manager invitation accepted.":"Поканата за управител е приета.",
   "Open Manager Dashboard":"Отвори таблото на управителя",
+  "Install on iPhone":"Инсталирай на iPhone",
+  "Add Building Manager to your Home Screen":"Добавете Building Manager на началния екран",
+  "Tap the Share button in Safari.":"Натиснете бутона Share в Safari.",
+  "Choose Add to Home Screen.":"Изберете Add to Home Screen.",
+  "Tap Add.":"Натиснете Add.",
 };
 
 export function useLanguage(){

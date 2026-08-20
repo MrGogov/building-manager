@@ -11,6 +11,9 @@ export default function Home(){
   const[session,setSession]=useState<any>(null);
   const[role,setRole]=useState<Role>(null);
   const[loading,setLoading]=useState(true);
+  const[showInstallHelp,setShowInstallHelp]=useState(false);
+  const[isIosSafari,setIsIosSafari]=useState(false);
+  const[isStandalone,setIsStandalone]=useState(false);
   const[error,setError]=useState("");
   const[msg,setMsg]=useState("");
 
@@ -66,6 +69,14 @@ export default function Home(){
   const[selectedApartmentId,setSelectedApartmentId]=useState("");
   const[feeAmount,setFeeAmount]=useState("");
   const[feeDueDay,setFeeDueDay]=useState("1");
+
+  useEffect(()=>{
+    const ua=navigator.userAgent;
+    const ios=/iPhone|iPad|iPod/i.test(ua);
+    const standalone=window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone===true;
+    setIsIosSafari(ios);
+    setIsStandalone(standalone);
+  },[]);
 
   useEffect(()=>{
     s.auth.getSession().then(({data})=>{if(data.session){setSession(data.session);bootstrap(data.session.user.id)} else setLoading(false)});
