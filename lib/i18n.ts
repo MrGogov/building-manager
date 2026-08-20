@@ -4,7 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 export type Language = "en"|"bg";
 
 const bg:Record<string,string>={
-  "Building Manager":"Домоуправител",
+  "Building Community":"Домоуправител",
   "Manager Portal":"Портал за управителя",
   "Resident Portal":"Портал за живущи",
   "Sign out":"Изход",
@@ -18,7 +18,7 @@ const bg:Record<string,string>={
   "Create a manager account":"Създай акаунт на управител",
   "Back to login":"Обратно към вход",
   "Loading…":"Зареждане…",
-  "Loading Building Manager…":"Зареждане…",
+  "Loading Building Community…":"Зареждане…",
   "Please sign in.":"Моля, влезте в профила си.",
   "Hello":"Здравей",
   "Tap to make a direct report":"Натиснете за директен сигнал",
@@ -128,7 +128,7 @@ const bg:Record<string,string>={
   "Complete Invitation":"Завърши поканата",
   "Invitation accepted. Your account is now linked to Apartment":"Поканата е приета. Профилът ви вече е свързан с апартамент",
 
-  "Open Building Manager":"Отвори приложението",
+  "Open Building Community":"Отвори приложението",
   "Invitation not found.":"Поканата не е намерена.",
   "Create Tenant Account":"Създай акаунт на живущ",
   "Tenant name":"Име на живущия",
@@ -224,7 +224,7 @@ const bg:Record<string,string>={
   "Manager invitation accepted.":"Поканата за управител е приета.",
   "Open Manager Dashboard":"Отвори таблото на управителя",
   "Install on iPhone":"Инсталирай на iPhone",
-  "Add Building Manager to your Home Screen":"Добавете Building Manager на началния екран",
+  "Add Building Community to your Home Screen":"Добавете Building Community на началния екран",
   "Tap the Share button in Safari.":"Натиснете бутона Share в Safari.",
   "Choose Add to Home Screen.":"Изберете Add to Home Screen.",
   "Tap Add.":"Натиснете Add.",
@@ -234,7 +234,7 @@ const bg:Record<string,string>={
   "Enter your email first.":"Първо въведете имейла си.",
   "Password reset email sent. Check your inbox.":"Изпратен е имейл за смяна на паролата. Проверете пощата си.",
   "Reset password":"Смяна на парола",
-  "Choose a new password for your Building Manager account.":"Изберете нова парола за профила си в Building Manager.",
+  "Choose a new password for your Building Community account.":"Изберете нова парола за профила си в Building Community.",
   "Open this page from the password reset email.":"Отворете тази страница чрез линка в имейла за смяна на паролата.",
   "Password must be at least 8 characters.":"Паролата трябва да е поне 8 символа.",
   "Passwords do not match.":"Паролите не съвпадат.",
@@ -276,6 +276,23 @@ const bg:Record<string,string>={
   "Could not register this device for push notifications.":"Устройството не можа да бъде регистрирано за push известия.",
   "This device is registered for real push notifications.":"Това устройство е регистрирано за реални push известия.",
   "Enable and connect this device to receive notifications while the app is closed.":"Разрешете и свържете устройството, за да получавате известия и когато приложението е затворено.",
+  "Customer Administration":"Администрация на клиенти",
+  "Create a new customer company and its first company administrator.":"Създайте нова клиентска компания и нейния първи администратор.",
+  "Platform Owner":"Собственик на платформата",
+  "Company name":"Име на компанията",
+  "Admin name":"Име на администратора",
+  "Admin email":"Имейл на администратора",
+  "Temporary password":"Временна парола",
+  "Minimum 8 characters":"Минимум 8 символа",
+  "Example: ABC Property Management":"Пример: ABC Property Management",
+  "Give these login details to the customer securely. They can then create buildings and invite their managers.":"Предайте тези данни за вход на клиента по сигурен начин. След това той може да създава сгради и да кани своите мениджъри.",
+  "Creating…":"Създаване…",
+  "Create Customer Admin":"Създай клиентски администратор",
+  "Customer admin account created.":"Профилът на клиентския администратор е създаден.",
+  "Customer ready":"Клиентът е готов",
+  "The temporary password is not stored or shown again.":"Временната парола не се съхранява и няма да бъде показана отново.",
+  "Complete all customer admin fields.":"Попълнете всички полета за клиентския администратор.",
+  "Temporary password must be at least 8 characters.":"Временната парола трябва да е поне 8 символа.",
 };
 
 export function useLanguage(){
