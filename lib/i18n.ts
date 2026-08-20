@@ -359,6 +359,11 @@ const bg:Record<string,string>={
   "Pending":"Предстоящо",
   "No fee records found.":"Няма намерени записи за такси.",
   "No active residents found.":"Няма активни живущи.",
+  "Export Backup":"Експортирай архив",
+  "Exporting…":"Експортиране…",
+  "Customer backup downloaded.":"Архивът на клиента е изтеглен.",
+  "Customer backup could not be created.":"Архивът на клиента не можа да бъде създаден.",
+  "Use Export Backup before customer removal or whenever you want an off-platform copy.":"Използвайте Експортирай архив преди премахване на клиент или когато искате независимо копие на данните.",
 };
 
 export function useLanguage(){
