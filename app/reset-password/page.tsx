@@ -46,7 +46,7 @@ export default function ResetPasswordPage(){
       }
     }}>
       <div className="row"><h1>🔐 {t("Reset password")}</h1>{languageSelector}</div>
-      <p>{t("Choose a new password for your Building Manager account.")}</p>
+      <p>{t("Choose a new password for your Building Community account.")}</p>
       {error&&<div className="notice error">{error}</div>}
       {msg&&<div className="notice success">{msg}</div>}
       {ready&&<>
