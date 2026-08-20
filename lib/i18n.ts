@@ -228,6 +228,7 @@ const bg:Record<string,string>={
   "Tap the Share button in Safari.":"Натиснете бутона Share в Safari.",
   "Choose Add to Home Screen.":"Изберете Add to Home Screen.",
   "Tap Add.":"Натиснете Add.",
+  "Install on Android":"Инсталирай на Android",
 };
 
 export function useLanguage(){

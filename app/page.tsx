@@ -13,6 +13,8 @@ export default function Home(){
   const[loading,setLoading]=useState(true);
   const[showInstallHelp,setShowInstallHelp]=useState(false);
   const[isIosSafari,setIsIosSafari]=useState(false);
+  const[isAndroid,setIsAndroid]=useState(false);
+  const[androidInstallPrompt,setAndroidInstallPrompt]=useState<any>(null);
   const[isStandalone,setIsStandalone]=useState(false);
   const[error,setError]=useState("");
   const[msg,setMsg]=useState("");
@@ -73,9 +75,17 @@ export default function Home(){
   useEffect(()=>{
     const ua=navigator.userAgent;
     const ios=/iPhone|iPad|iPod/i.test(ua);
+    const android=/Android/i.test(ua);
     const standalone=window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone===true;
     setIsIosSafari(ios);
+    setIsAndroid(android);
     setIsStandalone(standalone);
+    const captureInstall=(event:any)=>{
+      event.preventDefault();
+      setAndroidInstallPrompt(event);
+    };
+    window.addEventListener("beforeinstallprompt",captureInstall);
+    return()=>window.removeEventListener("beforeinstallprompt",captureInstall);
   },[]);
 
   useEffect(()=>{
@@ -727,6 +737,22 @@ export default function Home(){
     <label>{t("Password")}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
     <button className="primary full" onClick={authMode==="login"?signIn:signUpManager}>{authMode==="login"?t("Log in"):t("Create manager account")}</button>
     <button className="secondary full" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?t("Create a manager account"):t("Back to login")}</button>
+    {isIosSafari&&!isStandalone&&<>
+      <button className="secondary full installAppButton" onClick={()=>setShowInstallHelp(v=>!v)}>📱 {t("Install on iPhone")}</button>
+      {showInstallHelp&&<div className="installHelp">
+        <b>{t("Add Building Manager to your Home Screen")}</b>
+        <div>1. {t("Tap the Share button in Safari.")}</div>
+        <div>2. {t("Choose Add to Home Screen.")}</div>
+        <div>3. {t("Tap Add.")}</div>
+      </div>}
+    </>}
+    {isAndroid&&!isStandalone&&androidInstallPrompt&&
+      <button className="secondary full installAppButton" onClick={async()=>{
+        await androidInstallPrompt.prompt();
+        await androidInstallPrompt.userChoice.catch(()=>null);
+        setAndroidInstallPrompt(null);
+      }}>📱 {t("Install on Android")}</button>
+    }
   </div></main>;
 
   if(role==="tenant"&&tenantData){
