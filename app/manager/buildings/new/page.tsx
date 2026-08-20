@@ -6,6 +6,7 @@ import {useLanguage} from "../../../../lib/i18n";
 export default function NewBuildingPage(){
   const s=createClient();
   const{language,setLanguage,t}=useLanguage();
+  const[theme,setTheme]=useState<"light"|"dark">("light");
   const[loading,setLoading]=useState(true);
   const[creating,setCreating]=useState(false);
   const[error,setError]=useState("");
@@ -14,6 +15,19 @@ export default function NewBuildingPage(){
   const[city,setCity]=useState("");
   const[postalCode,setPostalCode]=useState("");
   const[totalApartments,setTotalApartments]=useState("10");
+
+  useEffect(()=>{
+    const saved=typeof window!=="undefined"?localStorage.getItem("bc-theme"):null;
+    const initial=saved==="dark"?"dark":"light";
+    setTheme(initial);
+    document.documentElement.setAttribute("data-theme",initial);
+  },[]);
+
+  useEffect(()=>{
+    if(typeof document==="undefined")return;
+    document.documentElement.setAttribute("data-theme",theme);
+    localStorage.setItem("bc-theme",theme);
+  },[theme]);
 
   useEffect(()=>{
     s.auth.getSession().then(({data})=>{
@@ -49,12 +63,14 @@ export default function NewBuildingPage(){
   if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
   const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")}><option value="en">EN</option><option value="bg">BG</option></select>;
+  const themeToggle=<button className="themeToggle" onClick={()=>setTheme(v=>v==="dark"?"light":"dark")} aria-label={theme==="dark"?"Switch to light mode":"Switch to dark mode"} title={theme==="dark"?"Switch to light mode":"Switch to dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>;
 
   return <main className="shell">
     <div className="top">
       <div><b>🏠 {t("Building Community")}</b><div className="muted">{t("New building setup")}</div></div>
       <div className="headerActions">
         {languageSelector}
+        {themeToggle}
         <button className="secondary" onClick={()=>location.href="/"}>← {t("Back to Dashboard")}</button>
       </div>
     </div>
