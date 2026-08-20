@@ -2,8 +2,8 @@ import type {MetadataRoute} from "next";
 
 export default function manifest():MetadataRoute.Manifest{
   return {
-    name:"Building Manager",
-    short_name:"Building Manager",
+    name:"Building Community",
+    short_name:"Building Community",
     description:"Building management for managers and residents.",
     id:"/",
     start_url:"/",

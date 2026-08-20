@@ -42,11 +42,17 @@ export default function Home(){
   const[inviteEmail,setInviteEmail]=useState("");
   const[lastInviteLink,setLastInviteLink]=useState("");
   const[avatarUploading,setAvatarUploading]=useState(false);
+  const[customerCompanyName,setCustomerCompanyName]=useState("");
+  const[customerAdminName,setCustomerAdminName]=useState("");
+  const[customerAdminEmail,setCustomerAdminEmail]=useState("");
+  const[customerTempPassword,setCustomerTempPassword]=useState("");
+  const[creatingCustomerAdmin,setCreatingCustomerAdmin]=useState(false);
+  const[lastCreatedCustomer,setLastCreatedCustomer]=useState<any>(null);
 
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[issueApartmentFocus,setIssueApartmentFocus]=useState<string|null>(null);
-  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team">("dashboard");
+  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team"|"customers">("dashboard");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
   const[buildingNoticesOpen,setBuildingNoticesOpen]=useState(false);
@@ -169,6 +175,32 @@ export default function Home(){
     if(error){setError(error.message);return}
     if(data.session&&data.user){setSession(data.session);await bootstrap(data.user.id)}
     else {setMsg("Account created. Confirm your email if confirmations are enabled, then log in.")}
+  }
+
+  const isPlatformOwner=(session?.user?.email||"").toLowerCase()==="mrgogov@abv.bg";
+
+  async function createCustomerAdmin(){
+    if(!isPlatformOwner)return;
+    setError("");setMsg("");setLastCreatedCustomer(null);
+    if(!customerCompanyName.trim()||!customerAdminName.trim()||!customerAdminEmail.trim()||!customerTempPassword){
+      setError(t("Complete all customer admin fields."));return;
+    }
+    if(customerTempPassword.length<8){
+      setError(t("Temporary password must be at least 8 characters."));return;
+    }
+    setCreatingCustomerAdmin(true);
+    const {data,error}=await s.functions.invoke("create-customer-admin",{body:{
+      company_name:customerCompanyName.trim(),
+      admin_name:customerAdminName.trim(),
+      admin_email:customerAdminEmail.trim().toLowerCase(),
+      temporary_password:customerTempPassword
+    }});
+    setCreatingCustomerAdmin(false);
+    if(error){setError(error.message);return}
+    if(data?.error){setError(data.error);return}
+    setLastCreatedCustomer(data);
+    setMsg(t("Customer admin account created."));
+    setCustomerCompanyName("");setCustomerAdminName("");setCustomerAdminEmail("");setCustomerTempPassword("");
   }
 
   function notificationDeviceLabel(){
@@ -1018,7 +1050,7 @@ export default function Home(){
   if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
   if(!session)return <main className="shell"><div className="card authCard" onKeyDown={handleAuthKeyDown}>
-    <div className="row"><h1>🏠 {t("Building Manager")}</h1>{languageSelector}</div><p>{t("Sign in to continue.")}</p>
+    <div className="row"><h1>🏠 {t("Building Community")}</h1>{languageSelector}</div><p>{t("Sign in to continue.")}</p>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     
     <label>{t("Email")}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
@@ -1028,7 +1060,7 @@ export default function Home(){
     {isIosSafari&&!isStandalone&&<>
       <button className="secondary full installAppButton" onClick={()=>setShowInstallHelp(v=>!v)}>📱 {t("Install on iPhone")}</button>
       {showInstallHelp&&<div className="installHelp">
-        <b>{t("Add Building Manager to your Home Screen")}</b>
+        <b>{t("Add Building Community to your Home Screen")}</b>
         <div>1. {t("Tap the Share button in Safari.")}</div>
         <div>2. {t("Choose Add to Home Screen.")}</div>
         <div>3. {t("Tap Add.")}</div>
@@ -1087,7 +1119,7 @@ export default function Home(){
       </div></div>
 
       <button className="card" style={{width:"100%",textAlign:"left"}} onClick={()=>setShowReport(true)}>
-        <div className="row"><div><h2 style={{margin:0}}>🏢 {t("Building Manager")}</h2><p style={{marginBottom:0}}>{t("Tap to make a direct report")}</p></div><b>›</b></div>
+        <div className="row"><div><h2 style={{margin:0}}>🏢 {t("Building Community")}</h2><p style={{marginBottom:0}}>{t("Tap to make a direct report")}</p></div><b>›</b></div>
       </button>
 
       <div className="card communityCard">
@@ -1099,7 +1131,7 @@ export default function Home(){
         <div className="communityStage">
           <button className="managerHub" onClick={()=>setShowReport(true)}>
             <span className="managerHubIcon">🏢</span>
-            <span>{t("Building Manager")}</span>
+            <span>{t("Building Community")}</span>
             <small>{t("Direct report")}</small>
           </button>
 
@@ -1155,7 +1187,7 @@ export default function Home(){
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 {t("Building Manager")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
+    <div className="top"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     {notificationSettingsModal}
 
@@ -1197,6 +1229,9 @@ export default function Home(){
         {t("Team Management")}
         {team.filter((m:any)=>m.role==="manager").length>0&&<span className="tabCount">{team.filter((m:any)=>m.role==="manager").length}</span>}
       </button>}
+      {isPlatformOwner&&<button className={`managerTab ${managerTab==="customers"?"managerTabActive":""}`} onClick={()=>setManagerTab("customers")}>
+        {t("Customer Administration")}
+      </button>}
     </div>
 
     {managerTab==="dashboard"&&<>
@@ -1209,7 +1244,7 @@ export default function Home(){
       <div className="communityStage managerView">
         <div className="managerHub staticHub">
           <span className="managerHubIcon">🏢</span>
-          <span>{t("Building Manager")}</span>
+          <span>{t("Building Community")}</span>
           <small>{managerData?.selectedBuilding?.name||""}</small>
         </div>
 
@@ -1619,6 +1654,36 @@ export default function Home(){
             </div>
           </div>)}
         </>}
+      </div>
+    </>}
+
+    {managerTab==="customers"&&isPlatformOwner&&<>
+      <div className="card">
+        <div className="row"><div><h2>🛡️ {t("Customer Administration")}</h2><div className="muted">{t("Create a new customer company and its first company administrator.")}</div></div><span className="tag">{t("Platform Owner")}</span></div>
+
+        <div className="teamInviteBox" onKeyDown={e=>{
+          if(e.key==="Enter"&&!e.shiftKey){
+            const target=e.target as HTMLElement;
+            if(target.tagName!=="BUTTON"&&target.tagName!=="TEXTAREA"){e.preventDefault();createCustomerAdmin()}
+          }
+        }}>
+          <label>{t("Company name")}</label>
+          <input value={customerCompanyName} onChange={e=>setCustomerCompanyName(e.target.value)} placeholder={t("Example: ABC Property Management")}/>
+          <label>{t("Admin name")}</label>
+          <input value={customerAdminName} onChange={e=>setCustomerAdminName(e.target.value)} placeholder={t("Full name")}/>
+          <label>{t("Admin email")}</label>
+          <input type="email" value={customerAdminEmail} onChange={e=>setCustomerAdminEmail(e.target.value)} placeholder="admin@example.com"/>
+          <label>{t("Temporary password")}</label>
+          <input type="password" autoComplete="new-password" value={customerTempPassword} onChange={e=>setCustomerTempPassword(e.target.value)} placeholder={t("Minimum 8 characters")}/>
+          <div className="muted setupHint">{t("Give these login details to the customer securely. They can then create buildings and invite their managers.")}</div>
+          <button className="primary full" disabled={creatingCustomerAdmin} onClick={createCustomerAdmin}>{creatingCustomerAdmin?t("Creating…"):t("Create Customer Admin")}</button>
+        </div>
+
+        {lastCreatedCustomer&&<div className="notice success">
+          <b>{t("Customer ready")}: {lastCreatedCustomer.company_name}</b>
+          <div>{t("Admin email")}: {lastCreatedCustomer.admin_email}</div>
+          <div className="muted">{t("The temporary password is not stored or shown again.")}</div>
+        </div>}
       </div>
     </>}
 

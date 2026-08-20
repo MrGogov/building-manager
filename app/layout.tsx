@@ -4,15 +4,15 @@ import MobileRuntime from "./mobile-runtime";
 
 export const metadata:Metadata={
   title:{
-    default:"Building Manager",
-    template:"%s • Building Manager"
+    default:"Building Community",
+    template:"%s • Building Community"
   },
   description:"Building management for managers and residents.",
-  applicationName:"Building Manager",
+  applicationName:"Building Community",
   manifest:"/manifest.webmanifest",
   appleWebApp:{
     capable:true,
-    title:"Building Manager",
+    title:"Building Community",
     statusBarStyle:"default"
   },
   icons:{
