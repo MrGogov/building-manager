@@ -48,6 +48,11 @@ export default function Home(){
   const[customerTempPassword,setCustomerTempPassword]=useState("");
   const[creatingCustomerAdmin,setCreatingCustomerAdmin]=useState(false);
   const[lastCreatedCustomer,setLastCreatedCustomer]=useState<any>(null);
+  const[showAccountSettings,setShowAccountSettings]=useState(false);
+  const[accountFullName,setAccountFullName]=useState("");
+  const[newAccountPassword,setNewAccountPassword]=useState("");
+  const[confirmAccountPassword,setConfirmAccountPassword]=useState("");
+  const[savingAccount,setSavingAccount]=useState(false);
 
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
@@ -201,6 +206,36 @@ export default function Home(){
     setLastCreatedCustomer(data);
     setMsg(t("Customer admin account created."));
     setCustomerCompanyName("");setCustomerAdminName("");setCustomerAdminEmail("");setCustomerTempPassword("");
+  }
+
+  function openAccountSettings(){
+    const currentName=role==="tenant"?tenantData?.profile?.full_name:managerData?.profile?.full_name;
+    setAccountFullName(currentName||"");
+    setNewAccountPassword("");
+    setConfirmAccountPassword("");
+    setError("");setMsg("");
+    setShowAccountSettings(true);
+  }
+
+  async function saveAccountSettings(){
+    if(!session)return;
+    setError("");setMsg("");
+    if(!accountFullName.trim()){setError(t("Full name is required."));return}
+    if(newAccountPassword){
+      if(newAccountPassword.length<8){setError(t("Password must be at least 8 characters."));return}
+      if(newAccountPassword!==confirmAccountPassword){setError(t("Passwords do not match."));return}
+    }
+    setSavingAccount(true);
+    const {error:profileError}=await s.from("profiles").update({full_name:accountFullName.trim()}).eq("id",session.user.id);
+    if(profileError){setSavingAccount(false);setError(profileError.message);return}
+    if(newAccountPassword){
+      const {error:passwordError}=await s.auth.updateUser({password:newAccountPassword});
+      if(passwordError){setSavingAccount(false);setError(passwordError.message);return}
+    }
+    setSavingAccount(false);
+    setMsg(newAccountPassword?t("Profile and password updated."):t("Profile updated."));
+    setShowAccountSettings(false);
+    await bootstrap(session.user.id);
   }
 
   function notificationDeviceLabel(){
@@ -1019,6 +1054,20 @@ export default function Home(){
     <option value="bg">BG</option>
   </select>;
 
+  const accountSettingsModal=showAccountSettings&&<div className="modal"><div className="modalcard notificationSettingsModal">
+    <div className="row"><div><h2>👤 {t("Account Settings")}</h2><div className="muted">{t("Update your profile or change your password.")}</div></div><button className="secondary compactButton" onClick={()=>setShowAccountSettings(false)}>✕</button></div>
+    <label>{t("Full name")}</label>
+    <input value={accountFullName} onChange={e=>setAccountFullName(e.target.value)}/>
+    <label>{t("Email")}</label>
+    <input type="email" value={session?.user?.email||""} disabled/>
+    <div className="notificationStageNote">🔐 {t("Leave the password fields empty if you only want to update your name.")}</div>
+    <label>{t("New password")}</label>
+    <input type="password" autoComplete="new-password" value={newAccountPassword} onChange={e=>setNewAccountPassword(e.target.value)} placeholder={t("Minimum 8 characters")}/>
+    <label>{t("Confirm new password")}</label>
+    <input type="password" autoComplete="new-password" value={confirmAccountPassword} onChange={e=>setConfirmAccountPassword(e.target.value)}/>
+    <button className="primary full" disabled={savingAccount} onClick={saveAccountSettings}>{savingAccount?t("Saving…"):t("Save Account Settings")}</button>
+  </div></div>;
+
   const notificationSettingsModal=showNotificationSettings&&<div className="modal"><div className="modalcard notificationSettingsModal">
     <div className="row"><div><h2>🔔 {t("Notification Settings")}</h2><div className="muted">{t("Choose which alerts you want on this device.")}</div></div><button className="secondary compactButton" onClick={()=>setShowNotificationSettings(false)}>✕</button></div>
 
@@ -1085,6 +1134,7 @@ export default function Home(){
         <div><b>🏠 {tenantData.building.name}</b><div className="muted">{t("Resident Portal")} • {t("Apartment")} {tenantData.apartment.apartment_number}</div></div>
         <div className="headerActions">
           {languageSelector}
+          <button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button>
           <button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button>
           <button className="bellButton" onClick={markNotificationsSeen} aria-label="Notifications">
             🔔{announcements.length>0&&!notificationsSeen&&<span className="bellDot"></span>}
@@ -1176,6 +1226,7 @@ export default function Home(){
         </div>)}
       </div>
 
+      {accountSettingsModal}
       {notificationSettingsModal}
       {showReport&&<div className="modal"><div className="modalcard"><h2>{t("Report an issue")}</h2>
         <div className="grid2"><button className={severity==="yellow"?"yellowChoice":"secondary"} onClick={()=>setSeverity("yellow")}>🟡 {t("Small discomfort")}</button><button className={severity==="red"?"redChoice":"secondary"} onClick={()=>setSeverity("red")}>🔴 {t("Bigger issue")}</button></div>
@@ -1187,8 +1238,9 @@ export default function Home(){
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
+    <div className="top"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
+    {accountSettingsModal}
     {notificationSettingsModal}
 
     <div className="card buildingSelectorCard">
