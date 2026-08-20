@@ -56,6 +56,7 @@ export default function Home(){
   const[notificationsSeen,setNotificationsSeen]=useState(false);
   const[showNotificationSettings,setShowNotificationSettings]=useState(false);
   const[notificationSaving,setNotificationSaving]=useState(false);
+  const[pushRegistered,setPushRegistered]=useState(false);
   const[notificationPrefs,setNotificationPrefs]=useState<any>({
     enabled:false,
     building_notices:true,
@@ -180,9 +181,79 @@ export default function Home(){
     return "Web";
   }
 
+  const VAPID_PUBLIC_KEY="BPCeJIgOyWtasWVOHYb7s-zHU1EXx5T1FJRmhO-RaDYuMfp58E5iCJ96nze-5Iw8-0qmZtOxEhpuuqGWrOrCAoE";
+
+  function urlBase64ToUint8Array(base64String:string){
+    const padding="=".repeat((4-base64String.length%4)%4);
+    const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+    const raw=atob(base64);
+    return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+  }
+
+  async function syncPushSubscription(uid:string){
+    if(!("serviceWorker" in navigator)||!("PushManager" in window)){
+      setPushRegistered(false);
+      return null;
+    }
+    const registration=await navigator.serviceWorker.ready;
+    const existing=await registration.pushManager.getSubscription();
+    setPushRegistered(!!existing);
+    if(existing){
+      const json=existing.toJSON();
+      const keys=json.keys||{};
+      if(json.endpoint&&keys.p256dh&&keys.auth){
+        await s.from("push_subscriptions").upsert({
+          user_id:uid,
+          endpoint:json.endpoint,
+          p256dh:keys.p256dh,
+          auth:keys.auth,
+          device_label:notificationDeviceLabel(),
+          updated_at:new Date().toISOString()
+        },{onConflict:"endpoint"});
+      }
+    }
+    return existing;
+  }
+
+  async function registerPushSubscription(uid:string){
+    if(!("serviceWorker" in navigator)||!("PushManager" in window))throw new Error(t("Push notifications are not supported on this browser."));
+    const registration=await navigator.serviceWorker.ready;
+    let subscription=await registration.pushManager.getSubscription();
+    if(!subscription){
+      subscription=await registration.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const json=subscription.toJSON();
+    const keys=json.keys||{};
+    if(!json.endpoint||!keys.p256dh||!keys.auth)throw new Error(t("Could not register this device for push notifications."));
+    const {error}=await s.from("push_subscriptions").upsert({
+      user_id:uid,
+      endpoint:json.endpoint,
+      p256dh:keys.p256dh,
+      auth:keys.auth,
+      device_label:notificationDeviceLabel(),
+      updated_at:new Date().toISOString()
+    },{onConflict:"endpoint"});
+    if(error)throw error;
+    setPushRegistered(true);
+    return subscription;
+  }
+
+  async function triggerPush(event_type:string,resource_id:string){
+    try{
+      const {error}=await s.functions.invoke("send-push",{body:{event_type,resource_id}});
+      if(error)console.warn("push dispatch",error.message);
+    }catch(e){
+      console.warn("push dispatch",e);
+    }
+  }
+
   async function loadNotificationPreferences(uid:string){
     const supported=typeof window!=="undefined"&&"Notification" in window;
     const browserPermission=supported?Notification.permission:"unsupported";
+    if(browserPermission==="granted")await syncPushSubscription(uid); else setPushRegistered(false);
     const {data,error}=await s.from("notification_preferences").select("*").eq("user_id",uid).maybeSingle();
     if(error){
       console.warn("notification preferences",error.message);
@@ -245,7 +316,14 @@ export default function Home(){
     const next={...notificationPrefs,enabled:permission==="granted",permission};
     setNotificationPrefs(next);
     await saveNotificationPreferences(next);
-    if(permission==="granted")setMsg(t("Notifications enabled on this device."));
+    if(permission==="granted"){
+      try{
+        await registerPushSubscription(session.user.id);
+        setMsg(t("Push notifications are connected on this device."));
+      }catch(e:any){
+        setError(e?.message||t("Could not register this device for push notifications."));
+      }
+    }
     if(permission==="denied")setError(t("Notification permission is blocked in your browser settings."));
   }
 
@@ -582,8 +660,9 @@ export default function Home(){
 
   async function submitIssue(){
     if(!tenantData||!session||!description.trim())return;
-    const {error:e}=await s.from("issues").insert({building_id:tenantData.building.id,apartment_id:tenantData.apartment.id,tenant_id:session.user.id,severity,description:description.trim(),callback_requested:callback});
+    const {data:created,error:e}=await s.from("issues").insert({building_id:tenantData.building.id,apartment_id:tenantData.apartment.id,tenant_id:session.user.id,severity,description:description.trim(),callback_requested:callback}).select("id").single();
     if(e){setError(e.message);return}
+    if(created?.id)await triggerPush("issue_created",created.id);
     setShowReport(false);setDescription("");setCallback(false);setMsg("Issue submitted to the building manager.");
     await loadTenant(session.user.id,tenantData.profile);
   }
@@ -599,11 +678,12 @@ export default function Home(){
 
   async function createAnnouncement(){
     if(!session||!selectedBuildingId||!noticeTitle.trim()||!noticeMessage.trim())return;
-    const {error:e}=await s.from("announcements").insert({
+    const {data:created,error:e}=await s.from("announcements").insert({
       building_id:selectedBuildingId,manager_id:session.user.id,type:noticeType,title:noticeTitle.trim(),message:noticeMessage.trim(),
       starts_at:noticeStart?new Date(noticeStart).toISOString():null,ends_at:noticeEnd?new Date(noticeEnd).toISOString():null
-    });
+    }).select("id").single();
     if(e){setError(e.message);return}
+    if(created?.id)await triggerPush("announcement_created",created.id);
     setNoticeTitle("");setNoticeMessage("");setNoticeStart("");setNoticeEnd("");setMsg("Building notice published.");
     setNoticeTab("pending");
     await loadManager(session.user.id,managerData.profile);
@@ -637,6 +717,7 @@ export default function Home(){
       updated_at:new Date().toISOString()
     }).eq("id",editingNotice.id);
     if(e){setError(e.message);return}
+    await triggerPush("announcement_updated",editingNotice.id);
     setEditingNotice(null);
     setMsg(t("Notice updated."));
     await loadManager(session.user.id,managerData.profile);
@@ -894,8 +975,8 @@ export default function Home(){
         <b>{t("Device notifications")}</b>
         <div className="muted">{t("Permission")}: {t(String(notificationPrefs.permission||"default"))}</div>
       </div>
-      <button className={notificationPrefs.permission==="granted"?"secondary":"primary"} onClick={enableDeviceNotifications}>
-        {notificationPrefs.permission==="granted"?t("Enabled"):t("Enable on this device")}
+      <button className={pushRegistered?"secondary":"primary"} onClick={enableDeviceNotifications}>
+        {pushRegistered?t("Push connected"):notificationPrefs.permission==="granted"?t("Connect push notifications"):t("Enable on this device")}
       </button>
     </div>
 
@@ -910,7 +991,7 @@ export default function Home(){
       <label className="notificationChoice"><input type="checkbox" checked={!!notificationPrefs.callback_requests} onChange={e=>setNotificationPrefs((p:any)=>({...p,callback_requests:e.target.checked}))}/><span><b>{t("Callback requests")}</b><small>{t("Alerts when a tenant asks for a callback.")}</small></span></label>
     </div>}
 
-    <div className="notificationStageNote">ℹ️ {t("Your preferences are ready. Actual push delivery will be connected in the next step.")}</div>
+    <div className="notificationStageNote">ℹ️ {pushRegistered?t("This device is registered for real push notifications."):t("Enable and connect this device to receive notifications while the app is closed.")}</div>
     <button className="primary full" disabled={notificationSaving} onClick={()=>saveNotificationPreferences()}>{notificationSaving?t("Saving…"):t("Save Notification Settings")}</button>
   </div></div>;
 
