@@ -52,7 +52,7 @@ export default function NewBuildingPage(){
 
   return <main className="shell">
     <div className="top">
-      <div><b>🏠 {t("Building Manager")}</b><div className="muted">{t("New building setup")}</div></div>
+      <div><b>🏠 {t("Building Community")}</b><div className="muted">{t("New building setup")}</div></div>
       <div className="headerActions">
         {languageSelector}
         <button className="secondary" onClick={()=>location.href="/"}>← {t("Back to Dashboard")}</button>
