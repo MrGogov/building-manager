@@ -31,7 +31,8 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
-  const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"issues"|"fees">("issues");
+  const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"tenant"|"issues"|"fees">("tenant");
+  const[tenantDetails,setTenantDetails]=useState<any>(null);
   const[notificationsSeen,setNotificationsSeen]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
@@ -182,11 +183,13 @@ export default function Home(){
       setSelectedApartment(chosen);
       setFeeAmount(String(chosen.monthly_fee||0));
       setFeeDueDay(String(chosen.fee_due_day||1));
+      await loadApartmentTenantDetails(chosen.id);
     }else{
       setSelectedApartmentId("");
       setSelectedApartment(null);
       setFeeAmount("");
       setFeeDueDay("1");
+      setTenantDetails(null);
     }
   }
 
@@ -198,9 +201,47 @@ export default function Home(){
     setSelectedApartment(null);
     setIssueFilter("active");
     setManagerTab("dashboard");
-    setApartmentOverviewTab("issues");
+    setApartmentOverviewTab("tenant");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
+  }
+
+  async function loadApartmentTenantDetails(apartmentId:string){
+    if(!apartmentId){setTenantDetails(null);return}
+    const {data,error}=await s.rpc("get_apartment_tenant_details",{p_apartment_id:apartmentId});
+    if(error){setError(error.message);setTenantDetails(null);return}
+    setTenantDetails(data?.[0]||null);
+  }
+
+  async function endTenancy(replace:boolean){
+    if(!selectedApartment||!session||!managerData)return;
+    const ok=window.confirm(replace
+      ? `End the current tenancy for Apartment ${selectedApartment.apartment_number} and invite a replacement tenant?`
+      : `End the current tenancy for Apartment ${selectedApartment.apartment_number}?`);
+    if(!ok)return;
+
+    setError("");setMsg("");
+    const {error}=await s.rpc("end_apartment_tenancy",{p_apartment_id:selectedApartment.id});
+    if(error){setError(error.message);return}
+
+    setTenantDetails(null);
+    setMsg("Tenancy ended. Apartment history is preserved; fee history will reset only when a new tenant accepts an invitation.");
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
+    setApartmentOverviewTab("tenant");
+    if(replace){
+      setInviteApartment(selectedApartment);
+      setInviteEmail("");
+    }
+  }
+
+  async function revokeInvitation(invitationId:string){
+    if(!session||!managerData)return;
+    const ok=window.confirm("Revoke this pending tenant invitation?");
+    if(!ok)return;
+    const {error}=await s.rpc("revoke_tenant_invitation",{p_invitation_id:invitationId});
+    if(error){setError(error.message);return}
+    setMsg("Pending invitation revoked.");
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
   }
 
   function inviteUrl(token:string){
@@ -717,12 +758,15 @@ export default function Home(){
         onChange={e=>{
           const id=e.target.value;
           setSelectedApartmentId(id);
-          setApartmentOverviewTab("issues");
+          setApartmentOverviewTab("tenant");
           const a=managerData.apartments.find((x:any)=>x.id===id);
           setSelectedApartment(a||null);
           if(a){
             setFeeAmount(String(a.monthly_fee||0));
             setFeeDueDay(String(a.fee_due_day||1));
+            loadApartmentTenantDetails(a.id);
+          }else{
+            setTenantDetails(null);
           }
         }}
       >
@@ -738,15 +782,10 @@ export default function Home(){
           {selectedApartmentCommunity
             ? <div className="muted">Active tenant account</div>
             : selectedPendingInvitation
-              ? <>
-                  <div className="muted">Invitation pending: {selectedPendingInvitation.email}</div>
-                  <button className="secondary summaryAction" onClick={()=>copyInvite(inviteUrl(selectedPendingInvitation.token))}>Copy Invite Link</button>
-                </>
-              : <>
-                  <div className="muted">No active tenant</div>
-                  <button className="primary summaryAction" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>Invite Tenant</button>
-                </>
+              ? <div className="muted">Invitation pending: {selectedPendingInvitation.email}</div>
+              : <div className="muted">No active tenant</div>
           }
+          <button className="secondary summaryAction" onClick={()=>setApartmentOverviewTab("tenant")}>Manage Tenant</button>
         </div>
 
         <div className="summaryBox">
@@ -768,6 +807,12 @@ export default function Home(){
 
       <div className="apartmentInnerTabs">
         <button
+          className={`apartmentInnerTab ${apartmentOverviewTab==="tenant"?"apartmentInnerTabActive":""}`}
+          onClick={()=>setApartmentOverviewTab("tenant")}
+        >
+          Tenant
+        </button>
+        <button
           className={`apartmentInnerTab ${apartmentOverviewTab==="issues"?"apartmentInnerTabActive":""}`}
           onClick={()=>setApartmentOverviewTab("issues")}
         >
@@ -782,6 +827,47 @@ export default function Home(){
           <span className="innerTabCount">{selectedApartmentFees.length}</span>
         </button>
       </div>
+
+      {apartmentOverviewTab==="tenant"&&<div className="apartmentTabPanel">
+        {tenantDetails?<>
+          <div className="tenantManagementCard">
+            <div className="tenantIdentity">
+              <div className="tenantManagementAvatar">
+                {tenantDetails.avatar_url?<img src={tenantDetails.avatar_url} alt="Tenant"/>:<span>{initials(tenantDetails.full_name)}</span>}
+              </div>
+              <div>
+                <div className="summaryValue">{tenantDetails.full_name}</div>
+                <div className="muted">Active tenant since {new Date(tenantDetails.started_at).toLocaleDateString()}</div>
+              </div>
+            </div>
+            <div className="tenantContactGrid">
+              <div><div className="muted">Email</div><b>{tenantDetails.email||"—"}</b></div>
+              <div><div className="muted">Phone</div><b>{tenantDetails.phone||"—"}</b></div>
+            </div>
+            <div className="tenantActions">
+              <button className="secondary" onClick={()=>endTenancy(false)}>End Tenancy</button>
+              <button className="primary" onClick={()=>endTenancy(true)}>Replace Tenant</button>
+            </div>
+          </div>
+        </>:selectedPendingInvitation?<>
+          <div className="tenantManagementCard">
+            <div className="row"><div><div className="muted">Status</div><div className="summaryValue">Invitation Pending</div></div><span className="feeBadge feePending">INVITED</span></div>
+            <p>{selectedPendingInvitation.email}</p>
+            <div className="muted">Expires {new Date(selectedPendingInvitation.expires_at).toLocaleString()}</div>
+            <div className="tenantActions">
+              <button className="secondary" onClick={()=>revokeInvitation(selectedPendingInvitation.id)}>Revoke Invitation</button>
+              <button className="primary" onClick={()=>copyInvite(inviteUrl(selectedPendingInvitation.token))}>Copy Invite Link</button>
+            </div>
+          </div>
+        </>:<>
+          <div className="emptyTenantState">
+            <div className="emptyTenantIcon">🏠</div>
+            <h3>Apartment is vacant</h3>
+            <p>No active tenant is assigned to Apartment {selectedApartment?.apartment_number}.</p>
+            <button className="primary" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>Invite Tenant</button>
+          </div>
+        </>}
+      </div>}
 
       {apartmentOverviewTab==="issues"&&<div className="apartmentTabPanel">
         {selectedApartmentIssues.length===0
