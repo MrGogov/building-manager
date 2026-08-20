@@ -31,6 +31,7 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
+  const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"issues"|"fees">("issues");
   const[notificationsSeen,setNotificationsSeen]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
@@ -197,6 +198,7 @@ export default function Home(){
     setSelectedApartment(null);
     setIssueFilter("active");
     setManagerTab("dashboard");
+    setApartmentOverviewTab("issues");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
   }
@@ -715,6 +717,7 @@ export default function Home(){
         onChange={e=>{
           const id=e.target.value;
           setSelectedApartmentId(id);
+          setApartmentOverviewTab("issues");
           const a=managerData.apartments.find((x:any)=>x.id===id);
           setSelectedApartment(a||null);
           if(a){
@@ -763,31 +766,52 @@ export default function Home(){
         </div>
       </div>}
 
-      {selectedApartmentIssues.length>0&&<>
-        <h3>Apartment issue history</h3>
-        {selectedApartmentIssues.map((i:any)=><div className="issue compactIssue" key={i.id}>
-          <div className="row">
-            <b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b>
-            <span className="tag">{String(i.status).replace("_"," ")}</span>
-          </div>
-          <p>{i.description}</p>
-          {i.callback_requested&&<div className="muted">☎ Callback requested</div>}
-        </div>)}
-      </>}
+      <div className="apartmentInnerTabs">
+        <button
+          className={`apartmentInnerTab ${apartmentOverviewTab==="issues"?"apartmentInnerTabActive":""}`}
+          onClick={()=>setApartmentOverviewTab("issues")}
+        >
+          Issue History
+          <span className="innerTabCount">{selectedApartmentIssues.length}</span>
+        </button>
+        <button
+          className={`apartmentInnerTab ${apartmentOverviewTab==="fees"?"apartmentInnerTabActive":""}`}
+          onClick={()=>setApartmentOverviewTab("fees")}
+        >
+          Fee History
+          <span className="innerTabCount">{selectedApartmentFees.length}</span>
+        </button>
+      </div>
 
-      {selectedApartmentFees.length>0&&<>
-        <h3>Fee history</h3>
-        {selectedApartmentFees.slice(0,6).map((f:any)=><div className="feeHistoryRow" key={f.id}>
-          <div>
-            <b>{new Date(f.period_month+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b>
-            <div className="muted">Due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div>
-          </div>
-          <div className="row">
-            <b>€{Number(f.amount).toFixed(2)}</b>
-            <span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span>
-          </div>
-        </div>)}
-      </>}
+      {apartmentOverviewTab==="issues"&&<div className="apartmentTabPanel">
+        {selectedApartmentIssues.length===0
+          ? <p>No issue history for this apartment.</p>
+          : selectedApartmentIssues.map((i:any)=><div className="issue compactIssue" key={i.id}>
+              <div className="row">
+                <b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b>
+                <span className="tag">{String(i.status).replace("_"," ")}</span>
+              </div>
+              <p>{i.description}</p>
+              {i.callback_requested&&<div className="muted">☎ Callback requested</div>}
+            </div>)
+        }
+      </div>}
+
+      {apartmentOverviewTab==="fees"&&<div className="apartmentTabPanel">
+        {selectedApartmentFees.length===0
+          ? <p>No fee history for this apartment.</p>
+          : selectedApartmentFees.slice(0,12).map((f:any)=><div className="feeHistoryRow" key={f.id}>
+              <div>
+                <b>{new Date(f.period_month+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b>
+                <div className="muted">Due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div>
+              </div>
+              <div className="row">
+                <b>€{Number(f.amount).toFixed(2)}</b>
+                <span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span>
+              </div>
+            </div>)
+        }
+      </div>}
     </div>
 
     <div className="card">
