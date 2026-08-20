@@ -2,8 +2,10 @@
 import {useEffect,useState} from "react";
 import {useSearchParams,useRouter} from "next/navigation";
 import {createClient} from "../../lib/supabase-browser";
+import {useLanguage} from "../../lib/i18n";
 
 export default function InviteClient(){
+  const{language,setLanguage,t}=useLanguage();
   const sp=useSearchParams();
   const router=useRouter();
   const s=createClient();
@@ -123,18 +125,20 @@ export default function InviteClient(){
     setBusy(false);
   }
 
-  return <div className="card" style={{maxWidth:520,margin:"60px auto"}}>
-    <h1>🏠 Tenant invitation</h1>
+  const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")}><option value="en">EN</option><option value="bg">BG</option></select>;
 
-    {busy&&!inv&&!err&&<p>Checking invitation…</p>}
+  return <div className="card" style={{maxWidth:520,margin:"60px auto"}}>
+    <div className="row"><h1>🏠 {t("Tenant invitation")}</h1>{languageSelector}</div>
+
+    {busy&&!inv&&!err&&<p>{t("Checking invitation…")}</p>}
     {err&&<div className="notice error">{err}</div>}
     {info&&<div className="notice success">{info}</div>}
 
     {done&&<>
       <div className="notice success">
-        Invitation accepted. Your account is now linked to Apartment {inv?.apartment_number}.
+        {t("Invitation accepted. Your account is now linked to Apartment")} {inv?.apartment_number}.
       </div>
-      <button className="primary full" onClick={()=>router.push("/")}>Open Building Manager</button>
+      <button className="primary full" onClick={()=>router.push("/")}>{t("Open Building Manager")}</button>
     </>}
 
     {inv&&!done&&!session&&<>
@@ -143,13 +147,13 @@ export default function InviteClient(){
         Apartment <b>{inv.apartment_number}</b>.
       </p>
 
-      <label>Your name</label>
+      <label>{t("Tenant name")}</label>
       <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name"/>
 
-      <label>Email</label>
+      <label>{t("Email")}</label>
       <input value={inv.email} readOnly/>
 
-      <label>Create password</label>
+      <label>{t("Password")}</label>
       <input type="password" value={pw} onChange={e=>setPw(e.target.value)}/>
 
       <button className="primary full" disabled={!name||pw.length<8||busy} onClick={createAccount}>

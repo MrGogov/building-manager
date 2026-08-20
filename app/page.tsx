@@ -1,11 +1,13 @@
  "use client";
 import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../lib/supabase-browser";
+import {useLanguage} from "../lib/i18n";
 
 type Role="company_admin"|"manager"|"tenant"|null;
 
 export default function Home(){
   const s=createClient();
+  const{language,setLanguage,t,dateLocale}=useLanguage();
   const[session,setSession]=useState<any>(null);
   const[role,setRole]=useState<Role>(null);
   const[loading,setLoading]=useState(true);
@@ -521,16 +523,21 @@ export default function Home(){
     return true;
   });
 
-  if(loading)return <main className="shell"><div className="card"><h1>Loading…</h1></div></main>;
+  const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")} aria-label="Language">
+    <option value="en">EN</option>
+    <option value="bg">BG</option>
+  </select>;
+
+  if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
   if(!session)return <main className="shell"><div className="card authCard">
-    <h1>🏠 Building Manager</h1><p>{authMode==="login"?"Sign in to continue.":"Create a manager account."}</p>
+    <div className="row"><h1>🏠 {t("Building Manager")}</h1>{languageSelector}</div><p>{authMode==="login"?t("Sign in to continue."):t("Create a manager account.")}</p>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
-    {authMode==="signup"&&<><label>Full name</label><input value={fullName} onChange={e=>setFullName(e.target.value)}/></>}
-    <label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
-    <label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
-    <button className="primary full" onClick={authMode==="login"?signIn:signUpManager}>{authMode==="login"?"Log in":"Create manager account"}</button>
-    <button className="secondary full" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?"Create a manager account":"Back to login"}</button>
+    {authMode==="signup"&&<><label>{t("Full name")}</label><input value={fullName} onChange={e=>setFullName(e.target.value)}/></>}
+    <label>{t("Email")}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
+    <label>{t("Password")}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
+    <button className="primary full" onClick={authMode==="login"?signIn:signUpManager}>{authMode==="login"?t("Log in"):t("Create manager account")}</button>
+    <button className="secondary full" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?t("Create a manager account"):t("Back to login")}</button>
   </div></main>;
 
   if(role==="tenant"&&tenantData){
@@ -540,12 +547,13 @@ export default function Home(){
     const dueInfo=tenantDueInfo(latestFee);
     return <main className="shell">
       <div className="top">
-        <div><b>🏠 {tenantData.building.name}</b><div className="muted">Resident Portal • Apartment {tenantData.apartment.apartment_number}</div></div>
+        <div><b>🏠 {tenantData.building.name}</b><div className="muted">{t("Resident Portal")} • {t("Apartment")} {tenantData.apartment.apartment_number}</div></div>
         <div className="headerActions">
+          {languageSelector}
           <button className="bellButton" onClick={markNotificationsSeen} aria-label="Notifications">
             🔔{announcements.length>0&&!notificationsSeen&&<span className="bellDot"></span>}
           </button>
-          <button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button>
+          <button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button>
         </div>
       </div>
       {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
@@ -575,19 +583,19 @@ export default function Home(){
       </div></div>
 
       <button className="card" style={{width:"100%",textAlign:"left"}} onClick={()=>setShowReport(true)}>
-        <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>Tap to make a direct report</p></div><b>›</b></div>
+        <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>{t("Tap to make a direct report")}</p></div><b>›</b></div>
       </button>
 
       <div className="card communityCard">
         <div className="row">
-          <div><h2>Building Community</h2><div className="muted">Status only — issue details remain private.</div></div>
+          <div><h2>{t("Building Community")}</h2><div className="muted">{t("Status only — issue details remain private.")}</div></div>
           <span className="tag">{community.length} residents</span>
         </div>
 
         <div className="communityStage">
           <button className="managerHub" onClick={()=>setShowReport(true)}>
             <span className="managerHubIcon">🏢</span>
-            <span>Building Manager</span>
+            <span>{t("Building Manager")}</span>
             <small>Direct report</small>
           </button>
 
@@ -607,43 +615,43 @@ export default function Home(){
         </div>
 
         <div className="legend">
-          <span><i className="dot greenDot"></i>No active issue</span>
+          <span><i className="dot greenDot"></i>{t("No active issue")}</span>
           <span><i className="dot yellowDot"></i>Small discomfort</span>
           <span><i className="dot redDot"></i>Bigger issue</span>
         </div>
       </div>
 
       <div className="grid2">
-        <div className="card"><div className="muted">Apartment</div><div className="stat">{tenantData.apartment.apartment_number}</div></div>
-        <div className={`card monthlyFeeCard ${dueInfo.glow}`}><div className="row"><div className="muted">Monthly fee</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">Due: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"}):"—"}</div></div>
+        <div className="card"><div className="muted">{t("Apartment")}</div><div className="stat">{tenantData.apartment.apartment_number}</div></div>
+        <div className={`card monthlyFeeCard ${dueInfo.glow}`}><div className="row"><div className="muted">{t("Monthly fee")}</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">{t("Due")}: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"}):"—"}</div></div>
       </div>
 
-      <div className="card"><div className="row"><h2>My Active Issues</h2><span className="tag">{issues.filter(i=>i.status!=="resolved").length}</span></div>
-        {issues.filter(i=>i.status!=="resolved").length===0?<p>No active issues.</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}</div>)}
+      <div className="card"><div className="row"><h2>{t("My Active Issues")}</h2><span className="tag">{issues.filter(i=>i.status!=="resolved").length}</span></div>
+        {issues.filter(i=>i.status!=="resolved").length===0?<p>{t("No active issues.")}</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}</div>)}
       </div>
 
       <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 Notifications</h2><span className="tag">{announcements.length}</span></div>
-        {announcements.length===0?<p>No building notices yet.</p>:announcements.map(n=><div className="issue" key={n.id}><b>{noticeIcon(n.type)} {n.title}</b><p>{n.message}</p></div>)}
+        {announcements.length===0?<p>{t("No building notices yet.")}</p>:announcements.map(n=><div className="issue" key={n.id}><b>{noticeIcon(n.type)} {n.title}</b><p>{n.message}</p></div>)}
       </div>
 
-      {showReport&&<div className="modal"><div className="modalcard"><h2>Report an issue</h2>
-        <div className="grid2"><button className={severity==="yellow"?"yellowChoice":"secondary"} onClick={()=>setSeverity("yellow")}>🟡 Small discomfort</button><button className={severity==="red"?"redChoice":"secondary"} onClick={()=>setSeverity("red")}>🔴 Bigger issue</button></div>
-        <label>Description</label><textarea value={description} onChange={e=>setDescription(e.target.value)}/>
-        <label className="check"><input type="checkbox" checked={callback} onChange={e=>setCallback(e.target.checked)}/> Request a callback</label>
-        <button className="primary full" onClick={submitIssue}>Submit Report</button><button className="secondary full" onClick={()=>setShowReport(false)}>Cancel</button>
+      {showReport&&<div className="modal"><div className="modalcard"><h2>{t("Report an issue")}</h2>
+        <div className="grid2"><button className={severity==="yellow"?"yellowChoice":"secondary"} onClick={()=>setSeverity("yellow")}>🟡 {t("Small discomfort")}</button><button className={severity==="red"?"redChoice":"secondary"} onClick={()=>setSeverity("red")}>🔴 {t("Bigger issue")}</button></div>
+        <label>{t("Description")}</label><textarea value={description} onChange={e=>setDescription(e.target.value)}/>
+        <label className="check"><input type="checkbox" checked={callback} onChange={e=>setCallback(e.target.checked)}/> {t("Request a callback")}</label>
+        <button className="primary full" onClick={submitIssue}>{t("Submit Report")}</button><button className="secondary full" onClick={()=>setShowReport(false)}>{t("Cancel")}</button>
       </div></div>}
     </main>
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 Building Manager</b><div className="muted">{managerData?.profile?.full_name} • Manager Portal</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
+    <div className="top"><div><b>🏠 {t("Building Manager")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
 
     <div className="card buildingSelectorCard">
       <div className="row buildingSelectorHeader">
         <div>
-          <h2>Manager Dashboard</h2>
-          <div className="muted">Choose which building you want to manage.</div>
+          <h2>{t("Manager Dashboard")}</h2>
+          <div className="muted">{t("Choose which building you want to manage.")}</div>
         </div>
         <span className="tag">{managerData?.buildings?.length||0} building{(managerData?.buildings?.length||0)===1?"":"s"}</span>
       </div>
@@ -651,18 +659,18 @@ export default function Home(){
       {managerData?.buildings?.length>0?<>
         <div className="buildingPickerRow">
           <div className="buildingPickerField">
-            <label>Building</label>
+            <label>{t("Building")}</label>
             <select value={selectedBuildingId} onChange={e=>changeManagerBuilding(e.target.value)}>
               {managerData.buildings.map((b:any)=><option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
             </select>
           </div>
-          <button className="primary createBuildingButton" onClick={()=>location.href="/manager/buildings/new"}>+ Create New Building</button>
+          <button className="primary createBuildingButton" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button>
         </div>
         <div className="selectedBuildingSummary">
           <b>🏢 {managerData?.selectedBuilding?.name}</b>
           <span className="muted">{managerData?.selectedBuilding?.address}</span>
         </div>
-      </>:<><p>No buildings are assigned to this management company yet.</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ Create New Building</button></>}
+      </>:<><p>No buildings are assigned to this management company yet.</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button></>}
     </div>
 
     <div className="managerTabs">
@@ -678,14 +686,14 @@ export default function Home(){
     {managerTab==="dashboard"&&<>
     <div className="card communityCard">
       <div className="row">
-        <div><h2>Building Status</h2><div className="muted">{managerData?.selectedBuilding?.name} • Live resident overview by apartment.</div></div>
+        <div><h2>{t("Building Status")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • Live resident overview by apartment.</div></div>
         <span className="tag">{community.length} residents</span>
       </div>
 
       <div className="communityStage managerView">
         <div className="managerHub staticHub">
           <span className="managerHubIcon">🏢</span>
-          <span>Building Manager</span>
+          <span>{t("Building Manager")}</span>
           <small>{managerData?.selectedBuilding?.name||""}</small>
         </div>
 
@@ -706,55 +714,55 @@ export default function Home(){
     </div>
 
     <div className="card">
-      <div className="row"><div><h2>Issue Dashboard</h2><div className="muted">{managerData?.selectedBuilding?.name} • Active issues are separated from resolved history.</div></div><span className="tag">{managerIssues.length}</span></div>
+      <div className="row"><div><h2>{t("Issue Dashboard")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • Active issues are separated from resolved history.</div></div><span className="tag">{managerIssues.length}</span></div>
 
       <div className="issueFilterGrid">
         <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>setIssueFilter("active")}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.status!=="resolved").length}</span>
-          <span>Active</span>
+          <span>{t("Active")}</span>
         </button>
         <button className={`filterTile yellowTile ${issueFilter==="yellow"?"filterActive":""}`} onClick={()=>setIssueFilter("yellow")}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="yellow"&&i.status!=="resolved").length}</span>
-          <span>Yellow</span>
+          <span>{t("Yellow")}</span>
         </button>
         <button className={`filterTile redTile ${issueFilter==="red"?"filterActive":""}`} onClick={()=>setIssueFilter("red")}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="red"&&i.status!=="resolved").length}</span>
-          <span>Red</span>
+          <span>{t("Red")}</span>
         </button>
         <button className={`filterTile ${issueFilter==="resolved"?"filterActive":""}`} onClick={()=>setIssueFilter("resolved")}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.status==="resolved").length}</span>
-          <span>Resolved</span>
+          <span>{t("Resolved")}</span>
         </button>
       </div>
 
       <div className="filterBar">
         <span className="muted">Showing: {issueFilter}</span>
-        {issueFilter!=="active"&&<button className="linkButton" onClick={()=>setIssueFilter("active")}>Back to active</button>}
+        {issueFilter!=="active"&&<button className="linkButton" onClick={()=>setIssueFilter("active")}>{t("Back to active")}</button>}
       </div>
 
-      {filteredManagerIssues.length===0?<p>No issues in this filter.</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ Callback requested</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>Acknowledge</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>In Progress</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>Resolve</button>}</div></div>)}
+      {filteredManagerIssues.length===0?<p>{t("No issues in this filter.")}</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>{t("Acknowledge")}</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>{t("In Progress")}</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>{t("Resolve")}</button>}</div></div>)}
     </div>
 
     {lastInviteLink&&<div className="card inviteLinkCard">
-      <div className="row"><div><h2>Tenant Invitation Link</h2><div className="muted">Send this secure link to the invited tenant.</div></div><button className="secondary" onClick={()=>setLastInviteLink("")}>Close</button></div>
+      <div className="row"><div><h2>{t("Tenant Invitation Link")}</h2><div className="muted">{t("Send this secure link to the invited tenant.")}</div></div><button className="secondary" onClick={()=>setLastInviteLink("")}>{t("Close")}</button></div>
       <input value={lastInviteLink} readOnly onFocus={e=>e.currentTarget.select()}/>
-      <button className="primary full" onClick={()=>copyInvite(lastInviteLink)}>Copy Link</button>
+      <button className="primary full" onClick={()=>copyInvite(lastInviteLink)}>{t("Copy Link")}</button>
     </div>}
 
     <div className="card">
       <div className="row">
         <div>
-          <h2>🏠 Apartment Overview</h2>
-          <div className="muted">Tenant, fees and issue history for one apartment.</div>
+          <h2>🏠 {t("Apartment Overview")}</h2>
+          <div className="muted">{t("Tenant, fees and issue history for one apartment.")}</div>
         </div>
         {selectedApartmentCommunity
           ? <span className={`feeBadge ${statusClass(selectedApartmentCommunity.status_color)==="residentRed"?"feeOverdue":statusClass(selectedApartmentCommunity.status_color)==="residentYellow"?"feePending":"feePaid"}`}>
               {selectedApartmentCommunity.status_color}
             </span>
-          : <span className="tag">VACANT</span>}
+          : <span className="tag">{t("VACANT")}</span>}
       </div>
 
-      <label>Apartment</label>
+      <label>{t("Apartment")}</label>
       <select
         value={selectedApartmentId}
         onChange={e=>{
@@ -788,15 +796,15 @@ export default function Home(){
               ? <div className="muted">Invitation pending: {selectedPendingInvitation.email}</div>
               : <div className="muted">No active tenant</div>
           }
-          <button className="secondary summaryAction" onClick={()=>setShowTenantManager(v=>!v)}>{showTenantManager?"Hide Tenant Manager":"Manage Tenant"}</button>
+          <button className="secondary summaryAction" onClick={()=>setShowTenantManager(v=>!v)}>{showTenantManager?t("Hide Tenant Manager"):t("Manage Tenant")}</button>
         </div>
 
         <div className="summaryBox">
-          <div className="muted">Monthly fee</div>
+          <div className="muted">{t("Monthly fee")}</div>
           <div className="summaryValue">€{Number(selectedApartment.monthly_fee||0).toFixed(2)}</div>
           <div className="muted">
             {selectedApartmentOutstanding
-              ? `Due ${new Date(selectedApartmentOutstanding.due_date+"T00:00:00").toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"})}`
+              ? `Due ${new Date(selectedApartmentOutstanding.due_date+"T00:00:00").toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"})}`
               : "No outstanding fee"}
           </div>
         </div>
@@ -809,7 +817,7 @@ export default function Home(){
       </div>}
 
       {showTenantManager&&<div className="tenantManagerSection">
-        <div className="tenantManagerHeading"><h3>Tenant Management</h3><div className="muted">Manage the current tenant or invitation for this apartment.</div></div>
+        <div className="tenantManagerHeading"><h3>{t("Tenant Management")}</h3><div className="muted">{t("Manage the current tenant or invitation for this apartment.")}</div></div>
         {tenantDetails?<>
           <div className="tenantManagementCard">
             <div className="tenantIdentity">
@@ -822,30 +830,30 @@ export default function Home(){
               </div>
             </div>
             <div className="tenantContactGrid">
-              <div><div className="muted">Email</div><b>{tenantDetails.email||"—"}</b></div>
-              <div><div className="muted">Phone</div><b>{tenantDetails.phone||"—"}</b></div>
+              <div><div className="muted">{t("Email")}</div><b>{tenantDetails.email||"—"}</b></div>
+              <div><div className="muted">{t("Phone")}</div><b>{tenantDetails.phone||"—"}</b></div>
             </div>
             <div className="tenantActions">
-              <button className="secondary" onClick={()=>endTenancy(false)}>End Tenancy</button>
-              <button className="primary" onClick={()=>endTenancy(true)}>Replace Tenant</button>
+              <button className="secondary" onClick={()=>endTenancy(false)}>{t("End Tenancy")}</button>
+              <button className="primary" onClick={()=>endTenancy(true)}>{t("Replace Tenant")}</button>
             </div>
           </div>
         </>:selectedPendingInvitation?<>
           <div className="tenantManagementCard">
-            <div className="row"><div><div className="muted">Status</div><div className="summaryValue">Invitation Pending</div></div><span className="feeBadge feePending">INVITED</span></div>
+            <div className="row"><div><div className="muted">{t("Status")}</div><div className="summaryValue">{t("Invitation Pending")}</div></div><span className="feeBadge feePending">{t("INVITED")}</span></div>
             <p>{selectedPendingInvitation.email}</p>
             <div className="muted">Expires {new Date(selectedPendingInvitation.expires_at).toLocaleString()}</div>
             <div className="tenantActions">
-              <button className="secondary" onClick={()=>revokeInvitation(selectedPendingInvitation.id)}>Revoke Invitation</button>
-              <button className="primary" onClick={()=>copyInvite(inviteUrl(selectedPendingInvitation.token))}>Copy Invite Link</button>
+              <button className="secondary" onClick={()=>revokeInvitation(selectedPendingInvitation.id)}>{t("Revoke Invitation")}</button>
+              <button className="primary" onClick={()=>copyInvite(inviteUrl(selectedPendingInvitation.token))}>{t("Copy Invite Link")}</button>
             </div>
           </div>
         </>:<>
           <div className="emptyTenantState">
             <div className="emptyTenantIcon">🏠</div>
-            <h3>Apartment is vacant</h3>
+            <h3>{t("Apartment is vacant")}</h3>
             <p>No active tenant is assigned to Apartment {selectedApartment?.apartment_number}.</p>
-            <button className="primary" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>Invite Tenant</button>
+            <button className="primary" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>{t("Invite Tenant")}</button>
           </div>
         </>}
       
@@ -876,21 +884,21 @@ export default function Home(){
 
       {apartmentOverviewTab==="issues"&&<div className="apartmentTabPanel">
         {selectedApartmentIssues.length===0
-          ? <p>No issue history for this apartment.</p>
+          ? <p>{t("No issue history for this apartment.")}</p>
           : selectedApartmentIssues.map((i:any)=><div className="issue compactIssue" key={i.id}>
               <div className="row">
-                <b>{i.severity==="red"?"🔴 Bigger issue":"🟡 Small discomfort"}</b>
+                <b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b>
                 <span className="tag">{String(i.status).replace("_"," ")}</span>
               </div>
               <p>{i.description}</p>
-              {i.callback_requested&&<div className="muted">☎ Callback requested</div>}
+              {i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}
             </div>)
         }
       </div>}
 
       {apartmentOverviewTab==="fees"&&<div className="apartmentTabPanel">
         {selectedApartmentFees.length===0
-          ? <p>No fee history for this apartment.</p>
+          ? <p>{t("No fee history for this apartment.")}</p>
           : selectedApartmentFees.slice(0,12).map((f:any)=><div className="feeHistoryRow" key={f.id}>
               <div>
                 <b>{new Date(f.period_month+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b>
@@ -906,28 +914,28 @@ export default function Home(){
 
       {apartmentOverviewTab==="fee_settings"&&<div className="apartmentTabPanel">
         <div className="selectedApartmentEditor inlineFeeEditor">
-          <div className="row"><div><h3>Fee Settings</h3><div className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. The next due date advances automatically after payment.</div></div><span className="tag">{pendingFees.filter((f:any)=>f.apartment_id===selectedApartmentId).length} pending</span></div>
+          <div className="row"><div><h3>{t("Fee Settings")}</h3><div className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. The next due date advances automatically after payment.</div></div><span className="tag">{pendingFees.filter((f:any)=>f.apartment_id===selectedApartmentId).length} pending</span></div>
           <div className="grid2">
             <div>
-              <label>Monthly fee (€)</label>
+              <label>{t("Monthly fee (€)")}</label>
               <input type="number" min="0" step="0.01" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)}/>
             </div>
             <div>
-              <label>Recurring due day each month</label>
+              <label>{t("Recurring due day each month")}</label>
               <input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
             </div>
           </div>
-          <button className="primary full" onClick={saveApartmentFee}>Save Apartment Fee</button>
+          <button className="primary full" onClick={saveApartmentFee}>{t("Save Apartment Fee")}</button>
         </div>
       </div>}
     </div>
 
-    <div className="card"><h2>📣 Publish Building Notice</h2><div className="muted">Publishing to {managerData?.selectedBuilding?.name||"selected building"} only.</div>
-      <label>Notice type</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 Planned works</option><option value="general">📣 General announcement</option><option value="important">⚠️ Important notice</option></select>
-      <label>Title</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
-      <label>Message</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
-      <div className="grid2"><div><label>Starts</label><input type="datetime-local" value={noticeStart} onChange={e=>setNoticeStart(e.target.value)}/></div><div><label>Ends</label><input type="datetime-local" value={noticeEnd} onChange={e=>setNoticeEnd(e.target.value)}/></div></div>
-      <button className="primary full" onClick={createAnnouncement}>Publish Notice</button>
+    <div className="card"><h2>📣 {t("Publish Building Notice")}</h2><div className="muted">Publishing to {managerData?.selectedBuilding?.name||"selected building"} only.</div>
+      <label>{t("Notice type")}</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 {t("Planned works")}</option><option value="general">📣 {t("General announcement")}</option><option value="important">⚠️ {t("Important notice")}</option></select>
+      <label>{t("Title")}</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
+      <label>{t("Message")}</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
+      <div className="grid2"><div><label>{t("Starts")}</label><input type="datetime-local" value={noticeStart} onChange={e=>setNoticeStart(e.target.value)}/></div><div><label>{t("Ends")}</label><input type="datetime-local" value={noticeEnd} onChange={e=>setNoticeEnd(e.target.value)}/></div></div>
+      <button className="primary full" onClick={createAnnouncement}>{t("Publish Notice")}</button>
     </div>
 
 
@@ -935,12 +943,12 @@ export default function Home(){
 
     {managerTab==="fees"&&<>
     <div className="card">
-      <div className="row"><div><h2>Pending Tenant Fees</h2><div className="muted">Outstanding fees for {managerData?.selectedBuilding?.name||"the selected building"}.</div></div><span className="tag">{pendingFees.length}</span></div>
-      {pendingFees.length===0?<p>No pending fees.</p>:pendingFees.map(f=>{
+      <div className="row"><div><h2>{t("Pending Tenant Fees")}</h2><div className="muted">Outstanding fees for {managerData?.selectedBuilding?.name||"the selected building"}.</div></div><span className="tag">{pendingFees.length}</span></div>
+      {pendingFees.length===0?<p>{t("No pending fees.")}</p>:pendingFees.map(f=>{
         const a=managerData.apartments.find((x:any)=>x.id===f.apartment_id);
         return <div className="apt" key={f.id}>
           <div><b>Apartment {a?.apartment_number||"?"}</b><div className="muted">€{Number(f.amount).toFixed(2)} • due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div></div>
-          <div className="row"><span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span><button className="primary" onClick={()=>markFee(f.id,true)}>Mark Paid</button></div>
+          <div className="row"><span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span><button className="primary" onClick={()=>markFee(f.id,true)}>{t("Mark Paid")}</button></div>
         </div>
       })}
     </div>
@@ -950,10 +958,10 @@ export default function Home(){
     {inviteApartment&&<div className="modal"><div className="modalcard">
       <h2>Invite tenant — Apartment {inviteApartment.apartment_number}</h2>
       <p>The invitation will be securely linked to {managerData?.selectedBuilding?.name}, Apartment {inviteApartment.apartment_number}.</p>
-      <label>Tenant email</label>
+      <label>{t("Tenant email")}</label>
       <input type="email" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="tenant@example.com"/>
-      <button className="primary full" disabled={!inviteEmail.trim()} onClick={createTenantInvitation}>Create Invitation</button>
-      <button className="secondary full" onClick={()=>{setInviteApartment(null);setInviteEmail("")}}>Cancel</button>
+      <button className="primary full" disabled={!inviteEmail.trim()} onClick={createTenantInvitation}>{t("Create Invitation")}</button>
+      <button className="secondary full" onClick={()=>{setInviteApartment(null);setInviteEmail("")}}>{t("Cancel")}</button>
     </div></div>}
   </main>
 }

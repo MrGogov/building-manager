@@ -1,9 +1,11 @@
  "use client";
 import {useEffect,useState} from "react";
 import {createClient} from "../../../../lib/supabase-browser";
+import {useLanguage} from "../../../../lib/i18n";
 
 export default function NewBuildingPage(){
   const s=createClient();
+  const{language,setLanguage,t}=useLanguage();
   const[loading,setLoading]=useState(true);
   const[creating,setCreating]=useState(false);
   const[error,setError]=useState("");
@@ -44,37 +46,42 @@ export default function NewBuildingPage(){
     location.href="/";
   }
 
-  if(loading)return <main className="shell"><div className="card"><h1>Loading…</h1></div></main>;
+  if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
+
+  const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")}><option value="en">EN</option><option value="bg">BG</option></select>;
 
   return <main className="shell">
     <div className="top">
-      <div><b>🏠 Building Manager</b><div className="muted">New building setup</div></div>
-      <button className="secondary" onClick={()=>location.href="/"}>← Back to Dashboard</button>
+      <div><b>🏠 {t("Building Manager")}</b><div className="muted">{t("New building setup")}</div></div>
+      <div className="headerActions">
+        {languageSelector}
+        <button className="secondary" onClick={()=>location.href="/"}>← {t("Back to Dashboard")}</button>
+      </div>
     </div>
 
     <div className="card newBuildingCard">
-      <h1>Create New Building</h1>
+      <h1>{t("Create New Building")}</h1>
       <p>Create the building and its apartments in one step. Apartment numbers will initially be created as 1, 2, 3…</p>
       {error&&<div className="notice error">{error}</div>}
 
-      <label>Building name</label>
+      <label>{t("Building name")}</label>
       <input value={name} onChange={e=>setName(e.target.value)} placeholder="Example: Riverside Residence"/>
 
-      <label>Address</label>
+      <label>{t("Address")}</label>
       <input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Street and number"/>
 
       <div className="grid2">
-        <div><label>City</label><input value={city} onChange={e=>setCity(e.target.value)} placeholder="Sofia"/></div>
-        <div><label>Postal code</label><input value={postalCode} onChange={e=>setPostalCode(e.target.value)} placeholder="1000"/></div>
+        <div><label>{t("City")}</label><input value={city} onChange={e=>setCity(e.target.value)} placeholder="Sofia"/></div>
+        <div><label>{t("Postal code")}</label><input value={postalCode} onChange={e=>setPostalCode(e.target.value)} placeholder="1000"/></div>
       </div>
 
-      <label>Number of apartments</label>
+      <label>{t("Number of apartments")}</label>
       <input type="number" min="1" max="1000" value={totalApartments} onChange={e=>setTotalApartments(e.target.value)}/>
       <div className="muted setupHint">Tenant invitations and monthly fees can be configured after the building is created.</div>
 
       <div className="createBuildingActions">
-        <button className="secondary" disabled={creating} onClick={()=>location.href="/"}>Cancel</button>
-        <button className="primary" disabled={creating} onClick={createBuilding}>{creating?"Creating Building…":"Create Building"}</button>
+        <button className="secondary" disabled={creating} onClick={()=>location.href="/"}>{t("Cancel")}</button>
+        <button className="primary" disabled={creating} onClick={createBuilding}>{creating?t("Creating Building…"):t("Create Building")}</button>
       </div>
     </div>
   </main>
