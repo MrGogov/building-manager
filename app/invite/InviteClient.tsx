@@ -148,7 +148,7 @@ export default function InviteClient(){
       </p>
 
       <label>{t("Tenant name")}</label>
-      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name"/>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder={t("Your full name")}/>
 
       <label>{t("Email")}</label>
       <input value={inv.email} readOnly/>

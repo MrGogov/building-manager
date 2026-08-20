@@ -61,14 +61,14 @@ export default function NewBuildingPage(){
 
     <div className="card newBuildingCard">
       <h1>{t("Create New Building")}</h1>
-      <p>Create the building and its apartments in one step. Apartment numbers will initially be created as 1, 2, 3…</p>
+      <p>{t("Create the building and its apartments in one step. Apartment numbers will initially be created as 1, 2, 3…")}</p>
       {error&&<div className="notice error">{error}</div>}
 
       <label>{t("Building name")}</label>
-      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Example: Riverside Residence"/>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder={t("Example: Riverside Residence")}/>
 
       <label>{t("Address")}</label>
-      <input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Street and number"/>
+      <input value={address} onChange={e=>setAddress(e.target.value)} placeholder={t("Street and number")}/>
 
       <div className="grid2">
         <div><label>{t("City")}</label><input value={city} onChange={e=>setCity(e.target.value)} placeholder="Sofia"/></div>
@@ -77,7 +77,7 @@ export default function NewBuildingPage(){
 
       <label>{t("Number of apartments")}</label>
       <input type="number" min="1" max="1000" value={totalApartments} onChange={e=>setTotalApartments(e.target.value)}/>
-      <div className="muted setupHint">Tenant invitations and monthly fees can be configured after the building is created.</div>
+      <div className="muted setupHint">{t("Tenant invitations and monthly fees can be configured after the building is created.")}</div>
 
       <div className="createBuildingActions">
         <button className="secondary" disabled={creating} onClick={()=>location.href="/"}>{t("Cancel")}</button>

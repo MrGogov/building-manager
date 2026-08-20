@@ -492,7 +492,7 @@ export default function Home(){
     if(latestFee&&effectiveFeeStatus(latestFee)==="paid") return {dueDate,glow:"feeGlowPaid",label:"Paid"};
     if(latestFee&&effectiveFeeStatus(latestFee)==="overdue") return {dueDate,glow:"feeGlowRed",label:"Overdue"};
     if(!latestFee&&days<0) return {dueDate,glow:"feeGlowRed",label:"Overdue"};
-    if(days<=2) return {dueDate,glow:"feeGlowYellow",label:days===0?"Due today":days===1?"Due tomorrow":`Due in ${days} days`};
+    if(days<=2) return {dueDate,glow:"feeGlowYellow",label:days===0?t("Due today"):days===1?t("Due tomorrow"):`${t("Due in")} ${days} ${t("days")}`};
     return {dueDate,glow:"",label:""};
   }
 
@@ -522,6 +522,10 @@ export default function Home(){
     if(issueFilter==="resolved")return i.status==="resolved";
     return true;
   });
+
+  function uiStatus(value:string){
+    return t(value);
+  }
 
   const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")} aria-label="Language">
     <option value="en">EN</option>
@@ -559,7 +563,7 @@ export default function Home(){
       {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
 
       <div className="card"><div className="row profileRow">
-        <div><h2>Hello, {tenantData.profile.full_name}</h2><p>{tenantData.building.address}</p></div>
+        <div><h2>{t("Hello")}, {tenantData.profile.full_name}</h2><p>{tenantData.building.address}</p></div>
         <div className="profilePhotoWrap">
           <div className="profilePhoto" style={{borderColor:color,boxShadow:`0 0 0 7px ${color}33`}}>
             {tenantData.profile.avatar_url
@@ -567,7 +571,7 @@ export default function Home(){
               : <span>{initials(tenantData.profile.full_name)}</span>}
           </div>
           <label className="photoButton">
-            {avatarUploading?"Uploading…":"Change photo"}
+            {avatarUploading?t("Uploading…"):t("Change photo")}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -583,20 +587,20 @@ export default function Home(){
       </div></div>
 
       <button className="card" style={{width:"100%",textAlign:"left"}} onClick={()=>setShowReport(true)}>
-        <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>{t("Tap to make a direct report")}</p></div><b>›</b></div>
+        <div className="row"><div><h2 style={{margin:0}}>🏢 {t("Building Manager")}</h2><p style={{marginBottom:0}}>{t("Tap to make a direct report")}</p></div><b>›</b></div>
       </button>
 
       <div className="card communityCard">
         <div className="row">
           <div><h2>{t("Building Community")}</h2><div className="muted">{t("Status only — issue details remain private.")}</div></div>
-          <span className="tag">{community.length} residents</span>
+          <span className="tag">{community.length} {community.length===1?t("resident"):t("residents")}</span>
         </div>
 
         <div className="communityStage">
           <button className="managerHub" onClick={()=>setShowReport(true)}>
             <span className="managerHubIcon">🏢</span>
             <span>{t("Building Manager")}</span>
-            <small>Direct report</small>
+            <small>{t("Direct report")}</small>
           </button>
 
           <div className="residentOval">
@@ -608,7 +612,7 @@ export default function Home(){
                 <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`Apartment ${r.apartment_number}`}>
                   {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
                 </div>
-                <div className="residentLabel">Apt {r.apartment_number}</div>
+                <div className="residentLabel">{t("Apartment")} {r.apartment_number}</div>
               </div>
             })}
           </div>
@@ -616,8 +620,8 @@ export default function Home(){
 
         <div className="legend">
           <span><i className="dot greenDot"></i>{t("No active issue")}</span>
-          <span><i className="dot yellowDot"></i>Small discomfort</span>
-          <span><i className="dot redDot"></i>Bigger issue</span>
+          <span><i className="dot yellowDot"></i>{t("Small discomfort")}</span>
+          <span><i className="dot redDot"></i>{t("Bigger issue")}</span>
         </div>
       </div>
 
@@ -627,10 +631,10 @@ export default function Home(){
       </div>
 
       <div className="card"><div className="row"><h2>{t("My Active Issues")}</h2><span className="tag">{issues.filter(i=>i.status!=="resolved").length}</span></div>
-        {issues.filter(i=>i.status!=="resolved").length===0?<p>{t("No active issues.")}</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}</div>)}
+        {issues.filter(i=>i.status!=="resolved").length===0?<p>{t("No active issues.")}</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b><span className="tag">{uiStatus(String(i.status))}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}</div>)}
       </div>
 
-      <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 Notifications</h2><span className="tag">{announcements.length}</span></div>
+      <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 {t("Notifications")}</h2><span className="tag">{announcements.length}</span></div>
         {announcements.length===0?<p>{t("No building notices yet.")}</p>:announcements.map(n=><div className="issue" key={n.id}><b>{noticeIcon(n.type)} {n.title}</b><p>{n.message}</p></div>)}
       </div>
 
@@ -653,7 +657,7 @@ export default function Home(){
           <h2>{t("Manager Dashboard")}</h2>
           <div className="muted">{t("Choose which building you want to manage.")}</div>
         </div>
-        <span className="tag">{managerData?.buildings?.length||0} building{(managerData?.buildings?.length||0)===1?"":"s"}</span>
+        <span className="tag">{managerData?.buildings?.length||0} {(managerData?.buildings?.length||0)===1?t("building"):t("buildings")}</span>
       </div>
 
       {managerData?.buildings?.length>0?<>
@@ -670,15 +674,15 @@ export default function Home(){
           <b>🏢 {managerData?.selectedBuilding?.name}</b>
           <span className="muted">{managerData?.selectedBuilding?.address}</span>
         </div>
-      </>:<><p>No buildings are assigned to this management company yet.</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button></>}
+      </>:<><p>{t("No buildings are assigned to this management company yet.")}</p><button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button></>}
     </div>
 
     <div className="managerTabs">
       <button className={`managerTab ${managerTab==="dashboard"?"managerTabActive":""}`} onClick={()=>setManagerTab("dashboard")}>
-        Dashboard
+        {t("Dashboard")}
       </button>
       <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
-        Pending Tenant Fees
+        {t("Pending Tenant Fees")}
         {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
       </button>
     </div>
@@ -686,8 +690,8 @@ export default function Home(){
     {managerTab==="dashboard"&&<>
     <div className="card communityCard">
       <div className="row">
-        <div><h2>{t("Building Status")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • Live resident overview by apartment.</div></div>
-        <span className="tag">{community.length} residents</span>
+        <div><h2>{t("Building Status")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • {t("Live resident overview by apartment.")}</div></div>
+        <span className="tag">{community.length} {community.length===1?t("resident"):t("residents")}</span>
       </div>
 
       <div className="communityStage managerView">
@@ -706,7 +710,7 @@ export default function Home(){
               <div className={`residentAvatar ${statusClass(r.status_color)}`} title={`${r.tenant_name} • Apartment ${r.apartment_number}`}>
                 {r.avatar_url?<img src={r.avatar_url} alt="Resident"/>:<span>{initials(r.tenant_name)}</span>}
               </div>
-              <div className="residentLabel">Apt {r.apartment_number}</div>
+              <div className="residentLabel">{t("Apartment")} {r.apartment_number}</div>
             </div>
           })}
         </div>
@@ -714,7 +718,7 @@ export default function Home(){
     </div>
 
     <div className="card">
-      <div className="row"><div><h2>{t("Issue Dashboard")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • Active issues are separated from resolved history.</div></div><span className="tag">{managerIssues.length}</span></div>
+      <div className="row"><div><h2>{t("Issue Dashboard")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • {t("Active issues are separated from resolved history.")}</div></div><span className="tag">{managerIssues.length}</span></div>
 
       <div className="issueFilterGrid">
         <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>setIssueFilter("active")}>
@@ -736,11 +740,11 @@ export default function Home(){
       </div>
 
       <div className="filterBar">
-        <span className="muted">Showing: {issueFilter}</span>
+        <span className="muted">{t("Showing")}: {uiStatus(issueFilter)}</span>
         {issueFilter!=="active"&&<button className="linkButton" onClick={()=>setIssueFilter("active")}>{t("Back to active")}</button>}
       </div>
 
-      {filteredManagerIssues.length===0?<p>{t("No issues in this filter.")}</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{String(i.status).replace("_"," ")}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>{t("Acknowledge")}</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>{t("In Progress")}</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>{t("Resolve")}</button>}</div></div>)}
+      {filteredManagerIssues.length===0?<p>{t("No issues in this filter.")}</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{uiStatus(String(i.status))}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>{t("Acknowledge")}</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>{t("In Progress")}</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>{t("Resolve")}</button>}</div></div>)}
     </div>
 
     {lastInviteLink&&<div className="card inviteLinkCard">
@@ -788,13 +792,13 @@ export default function Home(){
 
       {selectedApartment&&<div className="apartmentSummaryGrid">
         <div className="summaryBox">
-          <div className="muted">Tenant</div>
-          <div className="summaryValue">{selectedApartmentCommunity?.tenant_name||"Vacant"}</div>
+          <div className="muted">{t("Tenant")}</div>
+          <div className="summaryValue">{selectedApartmentCommunity?.tenant_name||t("Vacant")}</div>
           {selectedApartmentCommunity
-            ? <div className="muted">Active tenant account</div>
+            ? <div className="muted">{t("Active tenant account")}</div>
             : selectedPendingInvitation
               ? <div className="muted">Invitation pending: {selectedPendingInvitation.email}</div>
-              : <div className="muted">No active tenant</div>
+              : <div className="muted">{t("No active tenant")}</div>
           }
           <button className="secondary summaryAction" onClick={()=>setShowTenantManager(v=>!v)}>{showTenantManager?t("Hide Tenant Manager"):t("Manage Tenant")}</button>
         </div>
@@ -804,15 +808,15 @@ export default function Home(){
           <div className="summaryValue">€{Number(selectedApartment.monthly_fee||0).toFixed(2)}</div>
           <div className="muted">
             {selectedApartmentOutstanding
-              ? `Due ${new Date(selectedApartmentOutstanding.due_date+"T00:00:00").toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"})}`
-              : "No outstanding fee"}
+              ? `${t("Due")} ${new Date(selectedApartmentOutstanding.due_date+"T00:00:00").toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"})}`
+              : t("No outstanding fee")}
           </div>
         </div>
 
         <div className="summaryBox">
-          <div className="muted">Active issues</div>
+          <div className="muted">{t("Active issues")}</div>
           <div className="summaryValue">{selectedApartmentActiveCount}</div>
-          <div className="muted">{selectedApartmentResolvedCount} resolved in history</div>
+          <div className="muted">{selectedApartmentResolvedCount} {t("resolved in history")}</div>
         </div>
       </div>}
 
@@ -826,7 +830,7 @@ export default function Home(){
               </div>
               <div>
                 <div className="summaryValue">{tenantDetails.full_name}</div>
-                <div className="muted">Active tenant since {new Date(tenantDetails.started_at).toLocaleDateString()}</div>
+                <div className="muted">{t("Active tenant since")} {new Date(tenantDetails.started_at).toLocaleDateString(dateLocale)}</div>
               </div>
             </div>
             <div className="tenantContactGrid">
@@ -842,7 +846,7 @@ export default function Home(){
           <div className="tenantManagementCard">
             <div className="row"><div><div className="muted">{t("Status")}</div><div className="summaryValue">{t("Invitation Pending")}</div></div><span className="feeBadge feePending">{t("INVITED")}</span></div>
             <p>{selectedPendingInvitation.email}</p>
-            <div className="muted">Expires {new Date(selectedPendingInvitation.expires_at).toLocaleString()}</div>
+            <div className="muted">{t("Expires")} {new Date(selectedPendingInvitation.expires_at).toLocaleString(dateLocale)}</div>
             <div className="tenantActions">
               <button className="secondary" onClick={()=>revokeInvitation(selectedPendingInvitation.id)}>{t("Revoke Invitation")}</button>
               <button className="primary" onClick={()=>copyInvite(inviteUrl(selectedPendingInvitation.token))}>{t("Copy Invite Link")}</button>
@@ -852,7 +856,7 @@ export default function Home(){
           <div className="emptyTenantState">
             <div className="emptyTenantIcon">🏠</div>
             <h3>{t("Apartment is vacant")}</h3>
-            <p>No active tenant is assigned to Apartment {selectedApartment?.apartment_number}.</p>
+            <p>{t("No active tenant is assigned to Apartment")} {selectedApartment?.apartment_number}.</p>
             <button className="primary" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>{t("Invite Tenant")}</button>
           </div>
         </>}
@@ -864,21 +868,21 @@ export default function Home(){
           className={`apartmentInnerTab ${apartmentOverviewTab==="issues"?"apartmentInnerTabActive":""}`}
           onClick={()=>setApartmentOverviewTab("issues")}
         >
-          Issue History
+          {t("Issue History")}
           <span className="innerTabCount">{selectedApartmentIssues.length}</span>
         </button>
         <button
           className={`apartmentInnerTab ${apartmentOverviewTab==="fees"?"apartmentInnerTabActive":""}`}
           onClick={()=>setApartmentOverviewTab("fees")}
         >
-          Fee History
+          {t("Fee History")}
           <span className="innerTabCount">{selectedApartmentFees.length}</span>
         </button>
         <button
           className={`apartmentInnerTab ${apartmentOverviewTab==="fee_settings"?"apartmentInnerTabActive":""}`}
           onClick={()=>setApartmentOverviewTab("fee_settings")}
         >
-          Fee Settings
+          {t("Fee Settings")}
         </button>
       </div>
 
@@ -888,7 +892,7 @@ export default function Home(){
           : selectedApartmentIssues.map((i:any)=><div className="issue compactIssue" key={i.id}>
               <div className="row">
                 <b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b>
-                <span className="tag">{String(i.status).replace("_"," ")}</span>
+                <span className="tag">{uiStatus(String(i.status))}</span>
               </div>
               <p>{i.description}</p>
               {i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}
@@ -902,11 +906,11 @@ export default function Home(){
           : selectedApartmentFees.slice(0,12).map((f:any)=><div className="feeHistoryRow" key={f.id}>
               <div>
                 <b>{new Date(f.period_month+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b>
-                <div className="muted">Due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div>
+                <div className="muted">{t("Due")} {new Date(f.due_date+"T00:00:00").toLocaleDateString(dateLocale)}</div>
               </div>
               <div className="row">
                 <b>€{Number(f.amount).toFixed(2)}</b>
-                <span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span>
+                <span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{uiStatus(effectiveFeeStatus(f))}</span>
               </div>
             </div>)
         }
@@ -914,7 +918,7 @@ export default function Home(){
 
       {apartmentOverviewTab==="fee_settings"&&<div className="apartmentTabPanel">
         <div className="selectedApartmentEditor inlineFeeEditor">
-          <div className="row"><div><h3>{t("Fee Settings")}</h3><div className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. The next due date advances automatically after payment.</div></div><span className="tag">{pendingFees.filter((f:any)=>f.apartment_id===selectedApartmentId).length} pending</span></div>
+          <div className="row"><div><h3>{t("Fee Settings")}</h3><div className="muted">{t("Editing Apartment")} {selectedApartment?.apartment_number||"—"}. {t("The next due date advances automatically after payment.")}</div></div><span className="tag">{pendingFees.filter((f:any)=>f.apartment_id===selectedApartmentId).length} pending</span></div>
           <div className="grid2">
             <div>
               <label>{t("Monthly fee (€)")}</label>
@@ -930,7 +934,7 @@ export default function Home(){
       </div>}
     </div>
 
-    <div className="card"><h2>📣 {t("Publish Building Notice")}</h2><div className="muted">Publishing to {managerData?.selectedBuilding?.name||"selected building"} only.</div>
+    <div className="card"><h2>📣 {t("Publish Building Notice")}</h2><div className="muted">{t("Publishing to")} {managerData?.selectedBuilding?.name||t("selected building")}.</div>
       <label>{t("Notice type")}</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 {t("Planned works")}</option><option value="general">📣 {t("General announcement")}</option><option value="important">⚠️ {t("Important notice")}</option></select>
       <label>{t("Title")}</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
       <label>{t("Message")}</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
@@ -943,12 +947,12 @@ export default function Home(){
 
     {managerTab==="fees"&&<>
     <div className="card">
-      <div className="row"><div><h2>{t("Pending Tenant Fees")}</h2><div className="muted">Outstanding fees for {managerData?.selectedBuilding?.name||"the selected building"}.</div></div><span className="tag">{pendingFees.length}</span></div>
+      <div className="row"><div><h2>{t("Pending Tenant Fees")}</h2><div className="muted">{t("Outstanding fees for")} {managerData?.selectedBuilding?.name||t("the selected building")}.</div></div><span className="tag">{pendingFees.length}</span></div>
       {pendingFees.length===0?<p>{t("No pending fees.")}</p>:pendingFees.map(f=>{
         const a=managerData.apartments.find((x:any)=>x.id===f.apartment_id);
         return <div className="apt" key={f.id}>
           <div><b>Apartment {a?.apartment_number||"?"}</b><div className="muted">€{Number(f.amount).toFixed(2)} • due {new Date(f.due_date+"T00:00:00").toLocaleDateString()}</div></div>
-          <div className="row"><span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{effectiveFeeStatus(f)}</span><button className="primary" onClick={()=>markFee(f.id,true)}>{t("Mark Paid")}</button></div>
+          <div className="row"><span className={`feeBadge ${feeStatusClass(effectiveFeeStatus(f))}`}>{uiStatus(effectiveFeeStatus(f))}</span><button className="primary" onClick={()=>markFee(f.id,true)}>{t("Mark Paid")}</button></div>
         </div>
       })}
     </div>
