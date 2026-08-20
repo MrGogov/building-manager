@@ -19,7 +19,7 @@ export default function Home(){
   const[error,setError]=useState("");
   const[msg,setMsg]=useState("");
 
-  const[authMode,setAuthMode]=useState<"login"|"signup">("login");
+  const authMode:"login"="login";
   const[email,setEmail]=useState(""); const[password,setPassword]=useState(""); const[fullName,setFullName]=useState("");
   const[resetSending,setResetSending]=useState(false);
 
@@ -979,7 +979,7 @@ export default function Home(){
     const target=e.target as HTMLElement;
     if(target.tagName==="TEXTAREA"||target.tagName==="BUTTON"||target.tagName==="SELECT")return;
     e.preventDefault();
-    if(authMode==="login")signIn(); else signUpManager();
+    signIn();
   }
 
   const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")} aria-label="Language">
@@ -1018,14 +1018,13 @@ export default function Home(){
   if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
   if(!session)return <main className="shell"><div className="card authCard" onKeyDown={handleAuthKeyDown}>
-    <div className="row"><h1>🏠 {t("Building Manager")}</h1>{languageSelector}</div><p>{authMode==="login"?t("Sign in to continue."):t("Create a manager account.")}</p>
+    <div className="row"><h1>🏠 {t("Building Manager")}</h1>{languageSelector}</div><p>{t("Sign in to continue.")}</p>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     {authMode==="signup"&&<><label>{t("Full name")}</label><input value={fullName} onChange={e=>setFullName(e.target.value)}/></>}
     <label>{t("Email")}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
     <label>{t("Password")}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
-    <button className="primary full" onClick={authMode==="login"?signIn:signUpManager}>{authMode==="login"?t("Log in"):t("Create manager account")}</button>
-    {authMode==="login"&&<button className="textButton full" disabled={resetSending} onClick={sendPasswordReset}>{resetSending?t("Sending…"):t("Forgot password?")}</button>}
-    <button className="secondary full" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?t("Create a manager account"):t("Back to login")}</button>
+    <button className="primary full" onClick={signIn}>{t("Log in")}</button>
+    <button className="textButton full" disabled={resetSending} onClick={sendPasswordReset}>{resetSending?t("Sending…"):t("Forgot password?")}</button>
     {isIosSafari&&!isStandalone&&<>
       <button className="secondary full installAppButton" onClick={()=>setShowInstallHelp(v=>!v)}>📱 {t("Install on iPhone")}</button>
       {showInstallHelp&&<div className="installHelp">
