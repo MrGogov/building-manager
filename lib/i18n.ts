@@ -41,7 +41,6 @@ const bg:Record<string,string>={
   "Request a callback":"Поискай обратно обаждане",
   "Submit Report":"Изпрати сигнал",
   "Cancel":"Отказ",
-  "Building Community":"Общност на сградата",
   "Status only — issue details remain private.":"Показва се само статус — детайлите по сигналите остават поверителни.",
   "No active issue":"Няма активен сигнал",
   "Direct report":"Директен сигнал",
