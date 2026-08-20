@@ -54,6 +54,17 @@ export default function Home(){
   const[tenantDetails,setTenantDetails]=useState<any>(null);
   const[showTenantManager,setShowTenantManager]=useState(false);
   const[notificationsSeen,setNotificationsSeen]=useState(false);
+  const[showNotificationSettings,setShowNotificationSettings]=useState(false);
+  const[notificationSaving,setNotificationSaving]=useState(false);
+  const[notificationPrefs,setNotificationPrefs]=useState<any>({
+    enabled:false,
+    building_notices:true,
+    fee_reminders:true,
+    issue_updates:true,
+    manager_new_issues:true,
+    callback_requests:true,
+    permission:"default"
+  });
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
 
@@ -158,6 +169,86 @@ export default function Home(){
     else {setMsg("Account created. Confirm your email if confirmations are enabled, then log in.");setAuthMode("login")}
   }
 
+  function notificationDeviceLabel(){
+    if(typeof navigator==="undefined")return "Web";
+    const ua=navigator.userAgent;
+    if(/iPhone/i.test(ua))return "iPhone";
+    if(/iPad/i.test(ua))return "iPad";
+    if(/Android/i.test(ua))return "Android";
+    if(/Macintosh|Mac OS X/i.test(ua))return "Mac";
+    if(/Windows/i.test(ua))return "Windows";
+    return "Web";
+  }
+
+  async function loadNotificationPreferences(uid:string){
+    const supported=typeof window!=="undefined"&&"Notification" in window;
+    const browserPermission=supported?Notification.permission:"unsupported";
+    const {data,error}=await s.from("notification_preferences").select("*").eq("user_id",uid).maybeSingle();
+    if(error){
+      console.warn("notification preferences",error.message);
+      return;
+    }
+    if(data){
+      setNotificationPrefs({...data,permission:browserPermission});
+      if(data.permission!==browserPermission){
+        await s.from("notification_preferences").update({permission:browserPermission,updated_at:new Date().toISOString()}).eq("user_id",uid);
+      }
+    }else{
+      const initial={
+        user_id:uid,
+        enabled:browserPermission==="granted",
+        building_notices:true,
+        fee_reminders:true,
+        issue_updates:true,
+        manager_new_issues:true,
+        callback_requests:true,
+        permission:browserPermission,
+        device_label:notificationDeviceLabel(),
+        updated_at:new Date().toISOString()
+      };
+      const {error:insertError}=await s.from("notification_preferences").insert(initial);
+      if(!insertError)setNotificationPrefs(initial);
+    }
+  }
+
+  async function saveNotificationPreferences(next:any=notificationPrefs){
+    if(!session?.user?.id)return;
+    setNotificationSaving(true);setError("");setMsg("");
+    const payload={
+      user_id:session.user.id,
+      enabled:!!next.enabled,
+      building_notices:!!next.building_notices,
+      fee_reminders:!!next.fee_reminders,
+      issue_updates:!!next.issue_updates,
+      manager_new_issues:!!next.manager_new_issues,
+      callback_requests:!!next.callback_requests,
+      permission:next.permission||("Notification" in window?Notification.permission:"unsupported"),
+      device_label:notificationDeviceLabel(),
+      updated_at:new Date().toISOString()
+    };
+    const {error}=await s.from("notification_preferences").upsert(payload,{onConflict:"user_id"});
+    setNotificationSaving(false);
+    if(error){setError(error.message);return}
+    setNotificationPrefs(payload);
+    setMsg(t("Notification preferences saved."));
+  }
+
+  async function enableDeviceNotifications(){
+    if(!("Notification" in window)){
+      const next={...notificationPrefs,enabled:false,permission:"unsupported"};
+      setNotificationPrefs(next);
+      await saveNotificationPreferences(next);
+      setError(t("Notifications are not supported on this browser."));
+      return;
+    }
+    const permission=await Notification.requestPermission();
+    const next={...notificationPrefs,enabled:permission==="granted",permission};
+    setNotificationPrefs(next);
+    await saveNotificationPreferences(next);
+    if(permission==="granted")setMsg(t("Notifications enabled on this device."));
+    if(permission==="denied")setError(t("Notification permission is blocked in your browser settings."));
+  }
+
   function isFutureJwtError(error:any){
     const message=String(error?.message||error||"").toLowerCase();
     return message.includes("jwt issued at future")||message.includes("pgrst303");
@@ -178,6 +269,7 @@ export default function Home(){
 
     if(pe){setError(pe.message);setLoading(false);return}
     setRole(p.role);
+    await loadNotificationPreferences(uid);
     if(p.role==="tenant") await loadTenant(uid,p); else await loadManager(uid,p);
     setLoading(false);
   }
@@ -794,6 +886,34 @@ export default function Home(){
     <option value="bg">BG</option>
   </select>;
 
+  const notificationSettingsModal=showNotificationSettings&&<div className="modal"><div className="modalcard notificationSettingsModal">
+    <div className="row"><div><h2>🔔 {t("Notification Settings")}</h2><div className="muted">{t("Choose which alerts you want on this device.")}</div></div><button className="secondary compactButton" onClick={()=>setShowNotificationSettings(false)}>✕</button></div>
+
+    <div className="notificationPermissionBox">
+      <div>
+        <b>{t("Device notifications")}</b>
+        <div className="muted">{t("Permission")}: {t(String(notificationPrefs.permission||"default"))}</div>
+      </div>
+      <button className={notificationPrefs.permission==="granted"?"secondary":"primary"} onClick={enableDeviceNotifications}>
+        {notificationPrefs.permission==="granted"?t("Enabled"):t("Enable on this device")}
+      </button>
+    </div>
+
+    {role==="tenant"&&<div className="notificationChoiceList">
+      <label className="notificationChoice"><input type="checkbox" checked={!!notificationPrefs.building_notices} onChange={e=>setNotificationPrefs((p:any)=>({...p,building_notices:e.target.checked}))}/><span><b>{t("Building notices")}</b><small>{t("New notices and schedule changes.")}</small></span></label>
+      <label className="notificationChoice"><input type="checkbox" checked={!!notificationPrefs.fee_reminders} onChange={e=>setNotificationPrefs((p:any)=>({...p,fee_reminders:e.target.checked}))}/><span><b>{t("Fee reminders")}</b><small>{t("Upcoming and overdue monthly fees.")}</small></span></label>
+      <label className="notificationChoice"><input type="checkbox" checked={!!notificationPrefs.issue_updates} onChange={e=>setNotificationPrefs((p:any)=>({...p,issue_updates:e.target.checked}))}/><span><b>{t("Issue updates")}</b><small>{t("Changes to issues you reported.")}</small></span></label>
+    </div>}
+
+    {role!=="tenant"&&<div className="notificationChoiceList">
+      <label className="notificationChoice"><input type="checkbox" checked={!!notificationPrefs.manager_new_issues} onChange={e=>setNotificationPrefs((p:any)=>({...p,manager_new_issues:e.target.checked}))}/><span><b>{t("New tenant issues")}</b><small>{t("Alerts when a tenant submits a new issue.")}</small></span></label>
+      <label className="notificationChoice"><input type="checkbox" checked={!!notificationPrefs.callback_requests} onChange={e=>setNotificationPrefs((p:any)=>({...p,callback_requests:e.target.checked}))}/><span><b>{t("Callback requests")}</b><small>{t("Alerts when a tenant asks for a callback.")}</small></span></label>
+    </div>}
+
+    <div className="notificationStageNote">ℹ️ {t("Your preferences are ready. Actual push delivery will be connected in the next step.")}</div>
+    <button className="primary full" disabled={notificationSaving} onClick={()=>saveNotificationPreferences()}>{notificationSaving?t("Saving…"):t("Save Notification Settings")}</button>
+  </div></div>;
+
   if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
   if(!session)return <main className="shell"><div className="card authCard" onKeyDown={handleAuthKeyDown}>
@@ -833,6 +953,7 @@ export default function Home(){
         <div><b>🏠 {tenantData.building.name}</b><div className="muted">{t("Resident Portal")} • {t("Apartment")} {tenantData.apartment.apartment_number}</div></div>
         <div className="headerActions">
           {languageSelector}
+          <button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button>
           <button className="bellButton" onClick={markNotificationsSeen} aria-label="Notifications">
             🔔{announcements.length>0&&!notificationsSeen&&<span className="bellDot"></span>}
           </button>
@@ -923,6 +1044,7 @@ export default function Home(){
         </div>)}
       </div>
 
+      {notificationSettingsModal}
       {showReport&&<div className="modal"><div className="modalcard"><h2>{t("Report an issue")}</h2>
         <div className="grid2"><button className={severity==="yellow"?"yellowChoice":"secondary"} onClick={()=>setSeverity("yellow")}>🟡 {t("Small discomfort")}</button><button className={severity==="red"?"redChoice":"secondary"} onClick={()=>setSeverity("red")}>🔴 {t("Bigger issue")}</button></div>
         <label>{t("Description")}</label><textarea value={description} onChange={e=>setDescription(e.target.value)}/>
@@ -933,8 +1055,9 @@ export default function Home(){
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 {t("Building Manager")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
+    <div className="top"><div><b>🏠 {t("Building Manager")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
+    {notificationSettingsModal}
 
     <div className="card buildingSelectorCard">
       <div className="row buildingSelectorHeader">

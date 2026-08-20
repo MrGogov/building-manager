@@ -258,3 +258,17 @@ button:disabled{cursor:not-allowed;opacity:.58}
 
 .textButton{background:transparent;color:#4c7657;box-shadow:none!important;margin-top:6px;padding:8px 12px}
 @media(hover:hover) and (pointer:fine){.textButton:not(:disabled):hover{background:#f0f5f1;transform:none}}
+
+.notificationSettingsModal{max-width:560px}
+.compactButton{padding:8px 12px;min-width:44px}
+.notificationPermissionBox{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.notificationChoiceList{display:grid;gap:10px;margin:16px 0}
+.notificationChoice{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fbfcfb;cursor:pointer}
+.notificationChoice input{width:20px;height:20px;margin-top:2px;flex:0 0 auto}
+.notificationChoice span{display:grid;gap:3px}
+.notificationChoice small{color:var(--muted);font-weight:500}
+.notificationStageNote{padding:12px 14px;margin:8px 0 14px;border-radius:14px;background:#f3f7f4;color:var(--muted);font-size:13px;line-height:1.45}
+@media(max-width:620px){
+  .notificationPermissionBox{align-items:stretch;flex-direction:column}
+  .notificationPermissionBox button{width:100%}
+}
