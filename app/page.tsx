@@ -54,6 +54,8 @@ export default function Home(){
   const[lastCreatedCustomer,setLastCreatedCustomer]=useState<any>(null);
   const[customers,setCustomers]=useState<any[]>([]);
   const[customersLoading,setCustomersLoading]=useState(false);
+  const[auditLog,setAuditLog]=useState<any[]>([]);
+  const[auditLoading,setAuditLoading]=useState(false);
   const[deleteCustomer,setDeleteCustomer]=useState<any>(null);
   const[deleteCustomerConfirm,setDeleteCustomerConfirm]=useState("");
   const[deletingCustomer,setDeletingCustomer]=useState(false);
@@ -66,7 +68,7 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[issueApartmentFocus,setIssueApartmentFocus]=useState<string|null>(null);
-  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team"|"customers">("dashboard");
+  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team"|"customers"|"audit">("dashboard");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
   const[buildingNoticesOpen,setBuildingNoticesOpen]=useState(false);
@@ -246,6 +248,35 @@ export default function Home(){
     setDeleteCustomer(null);setDeleteCustomerConfirm("");
     setMsg(t("Customer and associated Building Community data removed."));
     await loadCustomers();
+  }
+
+  async function recordAudit(action:string,entityType:string,entityId:string|null,details:any={},buildingId:string|null=selectedBuildingId||null){
+    if(!session)return;
+    try{await s.rpc("record_audit_event",{p_action:action,p_entity_type:entityType,p_entity_id:entityId,p_building_id:buildingId,p_details:details||{}})}catch{}
+  }
+
+  async function loadAuditLog(){
+    if(!session||!managerData)return;
+    setAuditLoading(true);
+    const {data,error}=await s.rpc("get_audit_log",{p_limit:200});
+    setAuditLoading(false);
+    if(error){setError(error.message);return}
+    setAuditLog(data||[]);
+  }
+
+  function auditActionLabel(action:string){
+    const labels:any={
+      "customer.created":"Customer created","customer.removed":"Customer removed",
+      "building.created":"Building created","manager.invited":"Manager invited",
+      "manager.access_updated":"Manager access updated","manager.removed":"Manager removed",
+      "tenant.invited":"Tenant invited","tenancy.ended":"Tenancy ended",
+      "issue.created":"Issue reported","issue.status_updated":"Issue status updated",
+      "notice.created":"Notice created","notice.updated":"Notice updated",
+      "notice.completed":"Notice completed","notice.reopened":"Notice reopened",
+      "fee.settings_updated":"Fee settings updated","fee.generated":"Monthly fees generated",
+      "fee.status_updated":"Fee status updated"
+    };
+    return t(labels[action]||action);
   }
 
   function openAccountSettings(){
@@ -687,6 +718,7 @@ export default function Home(){
     if(error){setError(error.message);return}
 
     setTenantDetails(null);
+    await recordAudit("tenancy.ended","apartment",selectedApartment.id,{apartment_number:selectedApartment.apartment_number,replace_tenant:replace},selectedBuildingId);
     setMsg("Tenancy ended. Apartment history is preserved; fee history will reset only when a new tenant accepts an invitation.");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
     setApartmentOverviewTab("issues");
@@ -728,6 +760,7 @@ export default function Home(){
       setLastManagerInviteLink(url);
       try{await navigator.clipboard.writeText(url)}catch{}
     }
+    await recordAudit("manager.invited","manager_invitation",row?.invitation_id||null,{email:teamInviteEmail.trim().toLowerCase(),building_ids:teamInviteBuildings},null);
     setTeamInviteEmail("");setTeamInviteBuildings([]);
     setMsg(t("Manager invitation created."));
     await loadTeamData();
@@ -748,6 +781,7 @@ export default function Home(){
       p_building_ids:editingManagerBuildings
     });
     if(error){setError(error.message);return}
+    await recordAudit("manager.access_updated","profile",editingManager.user_id,{email:editingManager.email,building_ids:editingManagerBuildings},null);
     setEditingManager(null);
     setMsg(t("Manager building access updated."));
     await loadTeamData();
@@ -757,6 +791,7 @@ export default function Home(){
     if(!window.confirm(t("Remove this manager from the company?")))return;
     const {error}=await s.rpc("remove_company_manager",{p_manager_id:userId});
     if(error){setError(error.message);return}
+    await recordAudit("manager.removed","profile",userId,{},null);
     setMsg(t("Manager removed."));
     await loadTeamData();
   }
@@ -798,6 +833,7 @@ export default function Home(){
     }).select("id,token,expires_at").single();
 
     if(error){setError(error.message);return}
+    await recordAudit("tenant.invited","invitation",data.id,{email:inviteEmail.trim().toLowerCase(),apartment_number:inviteApartment.apartment_number},selectedBuildingId);
     const url=inviteUrl(data.token);
     setLastInviteLink(url);
     setInviteApartment(null);setInviteEmail("");
@@ -811,6 +847,7 @@ export default function Home(){
     const {data:created,error:e}=await s.from("issues").insert({building_id:tenantData.building.id,apartment_id:tenantData.apartment.id,tenant_id:session.user.id,severity,description:description.trim(),callback_requested:callback}).select("id").single();
     if(e){setError(e.message);return}
     if(created?.id)await triggerPush("issue_created",created.id);
+    if(created?.id)await recordAudit("issue.created","issue",created.id,{severity,callback_requested:callback},tenantData.building.id);
     setShowReport(false);setDescription("");setCallback(false);setMsg("Issue submitted to the building manager.");
     await loadTenant(session.user.id,tenantData.profile);
   }
@@ -822,6 +859,7 @@ export default function Home(){
     const {error:e}=await s.from("issues").update(patch).eq("id",id);
     if(e){setError(e.message);return}
     await triggerPush("issue_updated",id);
+    await recordAudit("issue.status_updated","issue",id,{status},selectedBuildingId);
     setMsg("Issue status updated.");await loadManager(session.user.id,managerData.profile);
   }
 
@@ -833,6 +871,7 @@ export default function Home(){
     }).select("id").single();
     if(e){setError(e.message);return}
     if(created?.id)await triggerPush("announcement_created",created.id);
+    if(created?.id)await recordAudit("notice.created","announcement",created.id,{title:noticeTitle.trim(),type:noticeType},selectedBuildingId);
     setNoticeTitle("");setNoticeMessage("");setNoticeStart("");setNoticeEnd("");setMsg("Building notice published.");
     setNoticeTab("pending");
     await loadManager(session.user.id,managerData.profile);
@@ -867,6 +906,7 @@ export default function Home(){
     }).eq("id",editingNotice.id);
     if(e){setError(e.message);return}
     await triggerPush("announcement_updated",editingNotice.id);
+    await recordAudit("notice.updated","announcement",editingNotice.id,{title:editNoticeTitle.trim(),type:editNoticeType},selectedBuildingId);
     setEditingNotice(null);
     setMsg(t("Notice updated."));
     await loadManager(session.user.id,managerData.profile);
@@ -881,6 +921,7 @@ export default function Home(){
       updated_at:new Date().toISOString()
     }).eq("id",id);
     if(e){setError(e.message);return}
+    await recordAudit("notice.completed","announcement",id,{},selectedBuildingId);
     setMsg(t("Notice marked as completed."));
     setNoticeTab("completed");
     await loadManager(session.user.id,managerData.profile);
@@ -892,6 +933,7 @@ export default function Home(){
       updated_at:new Date().toISOString()
     }).eq("id",id);
     if(e){setError(e.message);return}
+    await recordAudit("notice.reopened","announcement",id,{},selectedBuildingId);
     setMsg(t("Notice reopened."));
     setNoticeTab("pending");
     await loadManager(session.user.id,managerData.profile);
@@ -936,6 +978,7 @@ export default function Home(){
       if(fe){setError(fe.message);return}
     }
 
+    await recordAudit("fee.settings_updated","apartment",selectedApartment.id,{apartment_number:selectedApartment.apartment_number,monthly_fee:amount,due_day:dueDay},selectedBuildingId);
     setMsg("Apartment fee settings updated.");
     await loadManager(session.user.id,managerData.profile);
   }
@@ -945,6 +988,7 @@ export default function Home(){
     const period=currentPeriod+"-01";
     const {data,error}=await s.rpc("generate_monthly_fees",{p_building_id:selectedBuildingId,p_period_month:period});
     if(error){setError(error.message);return}
+    await recordAudit("fee.generated","building",selectedBuildingId,{period:currentPeriod,records_generated:data||0},selectedBuildingId);
     setMsg(`${data||0} monthly fee record(s) generated.`);
     await loadManager(session.user.id,managerData.profile);
   }
@@ -992,6 +1036,7 @@ export default function Home(){
       }
     }
 
+    await recordAudit("fee.status_updated","fee_record",id,{status:paid?"paid":"pending",apartment_id:current?.apartment_id||null},current?.building_id||selectedBuildingId);
     setMsg(paid?"Fee marked as paid. Next month's due date is now prepared.":"Fee returned to pending.");
     await loadManager(session.user.id,managerData.profile);
   }
@@ -1358,6 +1403,9 @@ export default function Home(){
       <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
         {t("Pending Tenant Fees")}
         {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
+      </button>
+      <button className={`managerTab ${managerTab==="audit"?"managerTabActive":""}`} onClick={()=>{setManagerTab("audit");loadAuditLog()}}>
+        {t("Activity & Audit Log")}
       </button>
       {managerData?.memberRole==="company_admin"&&<button className={`managerTab ${managerTab==="team"?"managerTabActive":""}`} onClick={()=>setManagerTab("team")}>
         {t("Team Management")}
@@ -1788,6 +1836,18 @@ export default function Home(){
             </div>
           </div>)}
         </>}
+      </div>
+    </>}
+
+    {managerTab==="audit"&&<>
+      <div className="card">
+        <div className="row"><div><h2>🧾 {t("Activity & Audit Log")}</h2><div className="muted">{t("A chronological record of important actions in your company.")}</div></div><button className="secondary" disabled={auditLoading} onClick={loadAuditLog}>{auditLoading?t("Loading…"):t("Refresh")}</button></div>
+        {auditLoading?<p>{t("Loading…")}</p>:auditLog.length===0?<p>{t("No activity recorded yet.")}</p>:auditLog.map((a:any)=><div className="teamMemberRow" key={a.id}>
+          <div><b>{auditActionLabel(a.action)}</b><div className="muted">{a.actor_name||a.actor_email||t("System")} • {new Date(a.created_at).toLocaleString(dateLocale)}</div>
+          {a.building_name&&<div className="teamBuildingChips"><span className="tag">{a.building_name}</span></div>}
+          {a.details&&Object.keys(a.details).length>0&&<div className="muted">{Object.entries(a.details).filter(([k])=>!["password","temporary_password","token"].includes(k)).slice(0,5).map(([k,v]:any)=>`${k.replaceAll("_"," ")}: ${Array.isArray(v)?v.length+" item(s)":String(v)}`).join(" • ")}</div>}</div>
+          <span className="tag">{a.entity_type}</span>
+        </div>)}
       </div>
     </>}
 
