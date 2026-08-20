@@ -16,6 +16,7 @@ export default function Home(){
   const[email,setEmail]=useState(""); const[password,setPassword]=useState(""); const[fullName,setFullName]=useState("");
 
   const[managerData,setManagerData]=useState<any>(null);
+  const[selectedBuildingId,setSelectedBuildingId]=useState("");
   const[tenantData,setTenantData]=useState<any>(null);
   const[issues,setIssues]=useState<any[]>([]);
   const[announcements,setAnnouncements]=useState<any[]>([]);
@@ -113,37 +114,78 @@ export default function Home(){
   async function loadManager(uid:string,profile:any){
     const {data:m,error:me}=await s.from("company_members").select("company_id").eq("user_id",uid).limit(1);
     if(me){setError(me.message);return}
-    if(!m?.[0]){setManagerData({profile,buildings:[],apartments:[],issues:[]});return}
-    const {data:b}=await s.from("buildings").select("id,name,address,total_apartments").eq("company_id",m[0].company_id);
-    let aps:any[]=[];let allIssues:any[]=[];let notices:any[]=[];let allFees:any[]=[];
-    if(b?.[0]){
-      const {data:a}=await s.from("apartments").select("id,apartment_number,monthly_fee,fee_due_day").eq("building_id",b[0].id).order("apartment_number");
-      aps=a||[];
-      const {data:i}=await s.from("issues").select("*").eq("building_id",b[0].id).order("created_at",{ascending:false});
-      allIssues=i||[];
-      const {data:n}=await s.from("announcements").select("*").eq("building_id",b[0].id).order("created_at",{ascending:false});
-      notices=n||[];
-      const {data:f}=await s.from("fee_records").select("*").eq("building_id",b[0].id).order("due_date",{ascending:false});
-      allFees=f||[];
+    if(!m?.[0]){
+      setManagerData({profile,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
+      setSelectedBuildingId("");
+      setAnnouncements([]);setFees([]);setCommunity([]);
+      return
     }
-    setAnnouncements(notices);setFees(allFees);
-    setManagerData({profile,buildings:b||[],apartments:aps,issues:allIssues});
-    if(aps.length){
-      const keep=aps.find((a:any)=>a.id===selectedApartmentId);
-      const chosen=keep||aps[0];
+
+    const {data:b,error:be}=await s.from("buildings")
+      .select("id,name,address,total_apartments")
+      .eq("company_id",m[0].company_id)
+      .order("name");
+    if(be){setError(be.message);return}
+
+    const buildings=b||[];
+    if(!buildings.length){
+      setManagerData({profile,buildings:[],selectedBuilding:null,apartments:[],issues:[]});
+      setSelectedBuildingId("");
+      setAnnouncements([]);setFees([]);setCommunity([]);
+      return
+    }
+
+    const preferred=buildings.find((x:any)=>x.id===selectedBuildingId)?.id||buildings[0].id;
+    setSelectedBuildingId(preferred);
+    await loadManagerBuilding(uid,profile,buildings,preferred);
+  }
+
+  async function loadManagerBuilding(uid:string,profile:any,buildings:any[],buildingId:string){
+    setError("");
+    const building=buildings.find((x:any)=>x.id===buildingId)||null;
+    if(!building)return;
+
+    const [{data:a,error:ae},{data:i,error:ie},{data:n,error:ne},{data:f,error:fe},{data:c,error:ce}]=await Promise.all([
+      s.from("apartments").select("id,apartment_number,monthly_fee,fee_due_day").eq("building_id",buildingId).order("apartment_number"),
+      s.from("issues").select("*").eq("building_id",buildingId).order("created_at",{ascending:false}),
+      s.from("announcements").select("*").eq("building_id",buildingId).order("created_at",{ascending:false}),
+      s.from("fee_records").select("*").eq("building_id",buildingId).order("due_date",{ascending:false}),
+      s.rpc("get_building_community_status",{p_building_id:buildingId})
+    ]);
+
+    const firstError=ae||ie||ne||fe||ce;
+    if(firstError){setError(firstError.message);return}
+
+    const aps=a||[];
+    setAnnouncements(n||[]);
+    setFees(f||[]);
+    setCommunity(c||[]);
+    setManagerData({profile,buildings,selectedBuilding:building,apartments:aps,issues:i||[]});
+
+    // Apartment selection belongs to the selected building.
+    const keep=aps.find((x:any)=>x.id===selectedApartmentId);
+    const chosen=keep||aps[0]||null;
+    if(chosen){
       setSelectedApartmentId(chosen.id);
       setSelectedApartment(chosen);
       setFeeAmount(String(chosen.monthly_fee||0));
       setFeeDueDay(String(chosen.fee_due_day||1));
-    }
-
-    if(b?.[0]){
-      const {data:c,error:ce}=await s.rpc("get_building_community_status",{p_building_id:b[0].id});
-      if(ce){setError(ce.message);return}
-      setCommunity(c||[]);
     }else{
-      setCommunity([]);
+      setSelectedApartmentId("");
+      setSelectedApartment(null);
+      setFeeAmount("");
+      setFeeDueDay("1");
     }
+  }
+
+  async function changeManagerBuilding(buildingId:string){
+    if(!session||!managerData)return;
+    setSelectedBuildingId(buildingId);
+    setSelectedApartmentId("");
+    setSelectedApartment(null);
+    setIssueFilter("active");
+    setMsg("");setError("");
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
   }
 
   async function submitIssue(){
@@ -164,9 +206,9 @@ export default function Home(){
   }
 
   async function createAnnouncement(){
-    if(!session||!managerData?.buildings?.[0]||!noticeTitle.trim()||!noticeMessage.trim())return;
+    if(!session||!selectedBuildingId||!noticeTitle.trim()||!noticeMessage.trim())return;
     const {error:e}=await s.from("announcements").insert({
-      building_id:managerData.buildings[0].id,manager_id:session.user.id,type:noticeType,title:noticeTitle.trim(),message:noticeMessage.trim(),
+      building_id:selectedBuildingId,manager_id:session.user.id,type:noticeType,title:noticeTitle.trim(),message:noticeMessage.trim(),
       starts_at:noticeStart?new Date(noticeStart).toISOString():null,ends_at:noticeEnd?new Date(noticeEnd).toISOString():null
     });
     if(e){setError(e.message);return}
@@ -203,7 +245,7 @@ export default function Home(){
       if(fe){setError(fe.message);return}
     }else if(amount>0){
       const {error:fe}=await s.from("fee_records").insert({
-        building_id:managerData.buildings[0].id,
+        building_id:selectedBuildingId,
         apartment_id:selectedApartment.id,
         period_month:periodIso,
         amount,
@@ -218,9 +260,9 @@ export default function Home(){
   }
 
   async function generateFees(){
-    if(!managerData?.buildings?.[0])return;
+    if(!selectedBuildingId)return;
     const period=currentPeriod+"-01";
-    const {data,error}=await s.rpc("generate_monthly_fees",{p_building_id:managerData.buildings[0].id,p_period_month:period});
+    const {data,error}=await s.rpc("generate_monthly_fees",{p_building_id:selectedBuildingId,p_period_month:period});
     if(error){setError(error.message);return}
     setMsg(`${data||0} monthly fee record(s) generated.`);
     await loadManager(session.user.id,managerData.profile);
@@ -493,11 +535,30 @@ export default function Home(){
     <div className="top"><div><b>🏠 Building Manager</b><div className="muted">{managerData?.profile?.full_name} • Manager Portal</div></div><button className="danger" onClick={()=>s.auth.signOut()}>Sign out</button></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
 
-    <div className="card"><h2>Manager Dashboard</h2><p>{managerData?.buildings?.[0]?.name||"No building"}</p></div>
+    <div className="card buildingSelectorCard">
+      <div className="row buildingSelectorHeader">
+        <div>
+          <h2>Manager Dashboard</h2>
+          <div className="muted">Choose which building you want to manage.</div>
+        </div>
+        <span className="tag">{managerData?.buildings?.length||0} building{(managerData?.buildings?.length||0)===1?"":"s"}</span>
+      </div>
+
+      {managerData?.buildings?.length>0?<>
+        <label>Building</label>
+        <select value={selectedBuildingId} onChange={e=>changeManagerBuilding(e.target.value)}>
+          {managerData.buildings.map((b:any)=><option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
+        </select>
+        <div className="selectedBuildingSummary">
+          <b>🏢 {managerData?.selectedBuilding?.name}</b>
+          <span className="muted">{managerData?.selectedBuilding?.address}</span>
+        </div>
+      </>:<p>No buildings are assigned to this management company yet.</p>}
+    </div>
 
     <div className="card communityCard">
       <div className="row">
-        <div><h2>Building Status</h2><div className="muted">Live resident overview by apartment.</div></div>
+        <div><h2>Building Status</h2><div className="muted">{managerData?.selectedBuilding?.name} • Live resident overview by apartment.</div></div>
         <span className="tag">{community.length} residents</span>
       </div>
 
@@ -505,7 +566,7 @@ export default function Home(){
         <div className="managerHub staticHub">
           <span className="managerHubIcon">🏢</span>
           <span>Building Manager</span>
-          <small>{managerData?.buildings?.[0]?.name||""}</small>
+          <small>{managerData?.selectedBuilding?.name||""}</small>
         </div>
 
         <div className="residentOval">
@@ -525,7 +586,7 @@ export default function Home(){
     </div>
 
     <div className="card">
-      <div className="row"><div><h2>Issue Dashboard</h2><div className="muted">Active issues are separated from resolved history.</div></div><span className="tag">{managerIssues.length}</span></div>
+      <div className="row"><div><h2>Issue Dashboard</h2><div className="muted">{managerData?.selectedBuilding?.name} • Active issues are separated from resolved history.</div></div><span className="tag">{managerIssues.length}</span></div>
 
       <div className="issueFilterGrid">
         <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>setIssueFilter("active")}>
@@ -669,7 +730,7 @@ export default function Home(){
       })}
     </div>
 
-    <div className="card"><h2>📣 Publish Building Notice</h2>
+    <div className="card"><h2>📣 Publish Building Notice</h2><div className="muted">Publishing to {managerData?.selectedBuilding?.name||"selected building"} only.</div>
       <label>Notice type</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 Planned works</option><option value="general">📣 General announcement</option><option value="important">⚠️ Important notice</option></select>
       <label>Title</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
       <label>Message</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>

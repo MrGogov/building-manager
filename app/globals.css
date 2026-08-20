@@ -89,3 +89,7 @@ button{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:poin
   .apartmentSummaryGrid{grid-template-columns:1fr}
   .feeHistoryRow{align-items:flex-start;flex-wrap:wrap}
 }
+
+.buildingSelectorCard select{font-weight:800}
+.buildingSelectorHeader{align-items:flex-start}
+.selectedBuildingSummary{margin-top:12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fbfcfa;display:flex;flex-direction:column;gap:3px}
