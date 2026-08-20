@@ -430,6 +430,7 @@ const bg:Record<string,string>={
   "Select a building first.":"Първо изберете сграда.",
   "Switch to dark mode":"Превключи към тъмен режим",
   "Switch to light mode":"Превключи към светъл режим",
+  "Management":"Управление",
 };
 
 export function useLanguage(){
