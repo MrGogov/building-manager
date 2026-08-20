@@ -229,6 +229,20 @@ const bg:Record<string,string>={
   "Choose Add to Home Screen.":"Изберете Add to Home Screen.",
   "Tap Add.":"Натиснете Add.",
   "Install on Android":"Инсталирай на Android",
+  "Forgot password?":"Забравена парола?",
+  "Sending…":"Изпращане…",
+  "Enter your email first.":"Първо въведете имейла си.",
+  "Password reset email sent. Check your inbox.":"Изпратен е имейл за смяна на паролата. Проверете пощата си.",
+  "Reset password":"Смяна на парола",
+  "Choose a new password for your Building Manager account.":"Изберете нова парола за профила си в Building Manager.",
+  "Open this page from the password reset email.":"Отворете тази страница чрез линка в имейла за смяна на паролата.",
+  "Password must be at least 8 characters.":"Паролата трябва да е поне 8 символа.",
+  "Passwords do not match.":"Паролите не съвпадат.",
+  "Password updated successfully.":"Паролата е обновена успешно.",
+  "New password":"Нова парола",
+  "Confirm new password":"Потвърдете новата парола",
+  "Saving…":"Запазване…",
+  "Update password":"Обнови паролата",
 };
 
 export function useLanguage(){
