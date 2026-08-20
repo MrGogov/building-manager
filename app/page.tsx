@@ -845,7 +845,6 @@ export default function Home(){
       </div>
 
       <div className="grid2">
-        <div className="card"><div className="muted">{t("Apartment")}</div><div className="stat">{tenantData.apartment.apartment_number}</div></div>
         <div className={`card monthlyFeeCard ${dueInfo.glow}`}><div className="row"><div className="muted">{t("Monthly fee")}</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">{t("Due")}: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"}):"—"}</div></div>
       </div>
 
