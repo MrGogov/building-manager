@@ -554,3 +554,139 @@ html[data-theme="dark"] .apartmentInnerTabs .apartmentInnerTabActive{
   background:#373d39 !important;
   color:#f2f2f2 !important;
 }
+
+
+/* Comprehensive dark-mode surface audit */
+html[data-theme="dark"] .selectedApartmentEditor,
+html[data-theme="dark"] .summaryBox,
+html[data-theme="dark"] .tenantManagerSection,
+html[data-theme="dark"] .tenantManagementCard,
+html[data-theme="dark"] .teamInviteBox,
+html[data-theme="dark"] .selectedBuildingSummary,
+html[data-theme="dark"] .notificationStageNote,
+html[data-theme="dark"] .notificationPermissionBox{
+  background:#343434 !important;
+  color:#f2f2f2 !important;
+  border-color:#4b4b4b !important;
+}
+
+html[data-theme="dark"] .emptyTenantState{
+  background:#303030 !important;
+  color:#f2f2f2 !important;
+  border:1px solid #474747;
+  border-radius:14px;
+}
+html[data-theme="dark"] .emptyTenantState h3,
+html[data-theme="dark"] .emptyTenantState p{
+  color:#f2f2f2 !important;
+}
+html[data-theme="dark"] .emptyTenantState p{color:#bcbcbc !important}
+
+html[data-theme="dark"] .tenantManagementAvatar{
+  background:#3b413d;
+  color:#f2f2f2;
+}
+html[data-theme="dark"] .tenantContactGrid{
+  border-color:#4b4b4b;
+}
+html[data-theme="dark"] .summaryBox .summaryValue,
+html[data-theme="dark"] .tenantManagementCard .summaryValue,
+html[data-theme="dark"] .tenantManagerSection h3{
+  color:#f3f3f3;
+}
+
+html[data-theme="dark"] .noticeTenantCard .noticeSchedule{
+  background:#363636 !important;
+  color:#f0f0f0 !important;
+  border:1px solid #4a4a4a;
+}
+html[data-theme="dark"] .noticeSchedule b{color:#f2f2f2}
+html[data-theme="dark"] .managedNotice{border-color:#484848}
+html[data-theme="dark"] .managedNoticeCompleted{opacity:.85}
+
+html[data-theme="dark"] .tabCount{
+  background:#465049;
+  color:#e6f2e9;
+}
+html[data-theme="dark"] .managerTabActive .tabCount,
+html[data-theme="dark"] .noticeTabActive .tabCount,
+html[data-theme="dark"] .apartmentInnerTabActive .tabCount{
+  background:#4c5d50;
+  color:#eff8f0;
+}
+
+html[data-theme="dark"] .selectedApartmentEditor input,
+html[data-theme="dark"] .selectedApartmentEditor textarea,
+html[data-theme="dark"] .selectedApartmentEditor select,
+html[data-theme="dark"] .tenantManagerSection input,
+html[data-theme="dark"] .tenantManagerSection textarea,
+html[data-theme="dark"] .tenantManagerSection select,
+html[data-theme="dark"] .teamInviteBox input,
+html[data-theme="dark"] .teamInviteBox textarea,
+html[data-theme="dark"] .teamInviteBox select{
+  background:#2f2f2f !important;
+  color:#f3f3f3 !important;
+  border-color:#4b4b4b !important;
+}
+
+html[data-theme="dark"] .buildingAccessOption{
+  background:#363636 !important;
+  color:#f2f2f2 !important;
+  border-color:#4b4b4b !important;
+}
+html[data-theme="dark"] .buildingAccessOption:hover{
+  background:#3b3f3c !important;
+}
+html[data-theme="dark"] .buildingAccessOption small{
+  color:#bcbcbc !important;
+}
+
+html[data-theme="dark"] .filterTile{
+  background:#363636 !important;
+  color:#f1f1f1 !important;
+  border-color:#4c4c4c !important;
+}
+html[data-theme="dark"] .filterTile.yellowTile{
+  background:#47412e !important;
+  color:#ffe7a0 !important;
+  border-color:#625a3b !important;
+}
+html[data-theme="dark"] .filterTile.redTile{
+  background:#473131 !important;
+  color:#ffbeb9 !important;
+  border-color:#634140 !important;
+}
+
+html[data-theme="dark"] .photoButton{
+  background:#343a36;
+  color:#e8eee9;
+}
+html[data-theme="dark"] .residentAvatar,
+html[data-theme="dark"] .profilePhoto{
+  background:#353535;
+}
+
+html[data-theme="dark"] .managerContent .grid2 > .card,
+html[data-theme="dark"] .managerContent .grid2 > div.card{
+  background:#343434;
+  color:#f2f2f2;
+  border-color:#4b4b4b;
+}
+
+/* Generic safety net for nested light panels in manager/admin content */
+html[data-theme="dark"] .managerContent [style*="background: rgb(255, 255, 255)"],
+html[data-theme="dark"] .managerContent [style*="background:#fff"],
+html[data-theme="dark"] .managerContent [style*="background: white"]{
+  background:#343434 !important;
+  color:#f2f2f2 !important;
+}
+
+/* Preserve mobile contrast too */
+@media(max-width:900px){
+  html[data-theme="dark"] .summaryBox,
+  html[data-theme="dark"] .tenantManagerSection,
+  html[data-theme="dark"] .tenantManagementCard,
+  html[data-theme="dark"] .emptyTenantState{
+    background:#343434 !important;
+  }
+}
