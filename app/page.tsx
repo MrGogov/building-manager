@@ -673,6 +673,7 @@ export default function Home(){
     if(status==="resolved")patch.resolved_at=new Date().toISOString();
     const {error:e}=await s.from("issues").update(patch).eq("id",id);
     if(e){setError(e.message);return}
+    await triggerPush("issue_updated",id);
     setMsg("Issue status updated.");await loadManager(session.user.id,managerData.profile);
   }
 
