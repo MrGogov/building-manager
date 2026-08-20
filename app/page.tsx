@@ -31,8 +31,9 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
-  const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"tenant"|"issues"|"fees">("tenant");
+  const[apartmentOverviewTab,setApartmentOverviewTab]=useState<"issues"|"fees"|"fee_settings">("issues");
   const[tenantDetails,setTenantDetails]=useState<any>(null);
+  const[showTenantManager,setShowTenantManager]=useState(false);
   const[notificationsSeen,setNotificationsSeen]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
@@ -201,7 +202,7 @@ export default function Home(){
     setSelectedApartment(null);
     setIssueFilter("active");
     setManagerTab("dashboard");
-    setApartmentOverviewTab("tenant");
+    setApartmentOverviewTab("issues");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
   }
@@ -227,7 +228,8 @@ export default function Home(){
     setTenantDetails(null);
     setMsg("Tenancy ended. Apartment history is preserved; fee history will reset only when a new tenant accepts an invitation.");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
-    setApartmentOverviewTab("tenant");
+    setApartmentOverviewTab("issues");
+    setShowTenantManager(true);
     if(replace){
       setInviteApartment(selectedApartment);
       setInviteEmail("");
@@ -758,7 +760,8 @@ export default function Home(){
         onChange={e=>{
           const id=e.target.value;
           setSelectedApartmentId(id);
-          setApartmentOverviewTab("tenant");
+          setApartmentOverviewTab("issues");
+          setShowTenantManager(false);
           const a=managerData.apartments.find((x:any)=>x.id===id);
           setSelectedApartment(a||null);
           if(a){
@@ -785,7 +788,7 @@ export default function Home(){
               ? <div className="muted">Invitation pending: {selectedPendingInvitation.email}</div>
               : <div className="muted">No active tenant</div>
           }
-          <button className="secondary summaryAction" onClick={()=>setApartmentOverviewTab("tenant")}>Manage Tenant</button>
+          <button className="secondary summaryAction" onClick={()=>setShowTenantManager(v=>!v)}>{showTenantManager?"Hide Tenant Manager":"Manage Tenant"}</button>
         </div>
 
         <div className="summaryBox">
@@ -805,30 +808,8 @@ export default function Home(){
         </div>
       </div>}
 
-      <div className="apartmentInnerTabs">
-        <button
-          className={`apartmentInnerTab ${apartmentOverviewTab==="tenant"?"apartmentInnerTabActive":""}`}
-          onClick={()=>setApartmentOverviewTab("tenant")}
-        >
-          Tenant
-        </button>
-        <button
-          className={`apartmentInnerTab ${apartmentOverviewTab==="issues"?"apartmentInnerTabActive":""}`}
-          onClick={()=>setApartmentOverviewTab("issues")}
-        >
-          Issue History
-          <span className="innerTabCount">{selectedApartmentIssues.length}</span>
-        </button>
-        <button
-          className={`apartmentInnerTab ${apartmentOverviewTab==="fees"?"apartmentInnerTabActive":""}`}
-          onClick={()=>setApartmentOverviewTab("fees")}
-        >
-          Fee History
-          <span className="innerTabCount">{selectedApartmentFees.length}</span>
-        </button>
-      </div>
-
-      {apartmentOverviewTab==="tenant"&&<div className="apartmentTabPanel">
+      {showTenantManager&&<div className="tenantManagerSection">
+        <div className="row tenantManagerHeading"><div><h3>Tenant Management</h3><div className="muted">Manage the current tenant or invitation for this apartment.</div></div><button className="secondary" onClick={()=>setShowTenantManager(false)}>Hide</button></div>
         {tenantDetails?<>
           <div className="tenantManagementCard">
             <div className="tenantIdentity">
@@ -867,7 +848,31 @@ export default function Home(){
             <button className="primary" onClick={()=>{setInviteApartment(selectedApartment);setInviteEmail("")}}>Invite Tenant</button>
           </div>
         </>}
+      
       </div>}
+
+      <div className="apartmentInnerTabs">
+        <button
+          className={`apartmentInnerTab ${apartmentOverviewTab==="issues"?"apartmentInnerTabActive":""}`}
+          onClick={()=>setApartmentOverviewTab("issues")}
+        >
+          Issue History
+          <span className="innerTabCount">{selectedApartmentIssues.length}</span>
+        </button>
+        <button
+          className={`apartmentInnerTab ${apartmentOverviewTab==="fees"?"apartmentInnerTabActive":""}`}
+          onClick={()=>setApartmentOverviewTab("fees")}
+        >
+          Fee History
+          <span className="innerTabCount">{selectedApartmentFees.length}</span>
+        </button>
+        <button
+          className={`apartmentInnerTab ${apartmentOverviewTab==="fee_settings"?"apartmentInnerTabActive":""}`}
+          onClick={()=>setApartmentOverviewTab("fee_settings")}
+        >
+          Fee Settings
+        </button>
+      </div>
 
       {apartmentOverviewTab==="issues"&&<div className="apartmentTabPanel">
         {selectedApartmentIssues.length===0
@@ -898,26 +903,22 @@ export default function Home(){
             </div>)
         }
       </div>}
-    </div>
 
-    <div className="card">
-      <div className="row"><div><h2>💶 Monthly Fees</h2><p>Choose an apartment above to edit its recurring fee settings. The next due date advances automatically after payment.</p></div><span className="tag">{pendingFees.length} pending</span></div>
-
-      <h3>Selected apartment fee settings</h3>
-      <p className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. Use the Apartment Overview dropdown above to switch apartments.</p>
-
-      {selectedApartment&&<div className="selectedApartmentEditor">
-        <div className="grid2">
-          <div>
-            <label>Monthly fee (€)</label>
-            <input type="number" min="0" step="0.01" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)}/>
+      {apartmentOverviewTab==="fee_settings"&&<div className="apartmentTabPanel">
+        <div className="selectedApartmentEditor inlineFeeEditor">
+          <div className="row"><div><h3>Fee Settings</h3><div className="muted">Editing Apartment {selectedApartment?.apartment_number||"—"}. The next due date advances automatically after payment.</div></div><span className="tag">{pendingFees.filter((f:any)=>f.apartment_id===selectedApartmentId).length} pending</span></div>
+          <div className="grid2">
+            <div>
+              <label>Monthly fee (€)</label>
+              <input type="number" min="0" step="0.01" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)}/>
+            </div>
+            <div>
+              <label>Recurring due day each month</label>
+              <input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
+            </div>
           </div>
-          <div>
-            <label>Recurring due day each month</label>
-            <input type="number" min="1" max="31" value={feeDueDay} onChange={e=>setFeeDueDay(e.target.value)}/>
-          </div>
+          <button className="primary full" onClick={saveApartmentFee}>Save Apartment Fee</button>
         </div>
-        <button className="primary full" onClick={saveApartmentFee}>Save Apartment Fee</button>
       </div>}
     </div>
 
