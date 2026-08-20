@@ -54,6 +54,7 @@ export default function Home(){
   const[tenantDetails,setTenantDetails]=useState<any>(null);
   const[showTenantManager,setShowTenantManager]=useState(false);
   const[notificationsSeen,setNotificationsSeen]=useState(false);
+  const[managerNotificationsSeen,setManagerNotificationsSeen]=useState(false);
   const[showNotificationSettings,setShowNotificationSettings]=useState(false);
   const[notificationSaving,setNotificationSaving]=useState(false);
   const[pushRegistered,setPushRegistered]=useState(false);
@@ -364,6 +365,21 @@ export default function Home(){
     document.getElementById("tenantNotifications")?.scrollIntoView({behavior:"smooth",block:"start"});
   }
 
+  function managerNotificationSeenKey(buildingId:string,uid:string){
+    return `bm_manager_issue_seen_${buildingId}_${uid}`;
+  }
+
+  function markManagerNotificationsSeen(){
+    if(!managerData?.selectedBuilding||!session)return;
+    const latest=(managerData.issues||[])[0]?.id||"none";
+    localStorage.setItem(managerNotificationSeenKey(managerData.selectedBuilding.id,session.user.id),latest);
+    setManagerNotificationsSeen(true);
+    setManagerTab("dashboard");
+    setIssueApartmentFocus(null);
+    setIssueFilter("active");
+    setTimeout(()=>document.getElementById("issueDashboardCard")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
+  }
+
   async function loadTenant(uid:string,profile:any){
     const {data:at,error:ae}=await s.from("apartment_tenants")
       .select("apartment_id,apartments(id,apartment_number,monthly_fee,fee_due_day,building_id,buildings(id,name,address))")
@@ -456,6 +472,9 @@ export default function Home(){
     setCommunity(c||[]);
     setInvitations(inv||[]);
     setManagerData((prev:any)=>({profile,companyId:companyId||prev?.companyId||null,memberRole:memberRole||prev?.memberRole||null,buildings,selectedBuilding:building,apartments:aps,issues:i||[]}));
+    const latestManagerIssue=(i||[])[0]?.id||"none";
+    const managerSeen=localStorage.getItem(managerNotificationSeenKey(buildingId,uid));
+    setManagerNotificationsSeen(managerSeen===latestManagerIssue);
 
     // Apartment selection belongs to the selected building.
     const keep=aps.find((x:any)=>x.id===selectedApartmentId);
@@ -1137,7 +1156,7 @@ export default function Home(){
   }
 
   return <main className="shell">
-    <div className="top"><div><b>🏠 {t("Building Manager")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
+    <div className="top"><div><b>🏠 {t("Building Manager")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     {notificationSettingsModal}
 
