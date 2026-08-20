@@ -143,7 +143,7 @@ export default function InviteClient(){
       <div className="notice success">
         {t("Invitation accepted. Your account is now linked to Apartment")} {inv?.apartment_number}.
       </div>
-      <button className="primary full" onClick={()=>router.push("/")}>{t("Open Building Manager")}</button>
+      <button className="primary full" onClick={()=>router.push("/")}>{t("Open Building Community")}</button>
     </>}
 
     {inv&&!done&&!session&&<>
