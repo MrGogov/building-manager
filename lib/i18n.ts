@@ -345,6 +345,20 @@ const bg:Record<string,string>={
   "Hide Buildings":"Скрий сградите",
   "Platform Owner view is read-only.":"Прегледът за собственика на платформата е само за четене.",
   "This customer has not created any buildings yet.":"Този клиент все още не е създал сгради.",
+  "Open Support Workspace":"Отвори работно пространство за поддръжка",
+  "Opening…":"Отваряне…",
+  "Platform Owner Support Mode":"Режим за поддръжка на собственика",
+  "Read-only troubleshooting workspace":"Работно пространство само за преглед и диагностика",
+  "Exit Support Mode":"Излез от режима за поддръжка",
+  "This support session is read-only and has been recorded in the Audit Log.":"Тази сесия за поддръжка е само за четене и е записана в журнала.",
+  "Overview":"Преглед",
+  "Fees":"Такси",
+  "Residents":"Живущи",
+  "active notices":"активни съобщения",
+  "No issues found.":"Няма намерени сигнали.",
+  "Pending":"Предстоящо",
+  "No fee records found.":"Няма намерени записи за такси.",
+  "No active residents found.":"Няма активни живущи.",
 };
 
 export function useLanguage(){
