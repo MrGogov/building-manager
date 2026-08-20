@@ -1590,12 +1590,43 @@ export default function Home(){
     </main>
   }
 
-  return <main className="shell">
-    <div className="top"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}{themeToggle}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
+  return <main className="shell managerShell">
+    <div className="top managerTop"><div><b>🏠 {t("Building Community")}</b><div className="muted">{managerData?.profile?.full_name} • {t("Manager Portal")}</div></div><div className="headerActions">{languageSelector}{themeToggle}<button className="bellButton" onClick={markManagerNotificationsSeen} aria-label={t("Notifications")}>🔔{managerIssues.length>0&&!managerNotificationsSeen&&<span className="bellDot"></span>}</button><button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button><button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button><button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button></div></div>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     {accountSettingsModal}
     {notificationSettingsModal}
 
+    <div className="managerWorkspace">
+      <aside className="managerSidebar">
+        <div className="managerSidebarBrand">
+          <div className="managerSidebarLogo">🏢</div>
+          <div><b>{t("Building Community")}</b><span>{t("Management")}</span></div>
+        </div>
+    <div className="managerTabs">
+      <button className={`managerTab ${managerTab==="dashboard"?"managerTabActive":""}`} onClick={()=>setManagerTab("dashboard")}>
+        🏠 {t("Dashboard")}
+      </button>
+      <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
+        💳 {t("Pending Tenant Fees")}
+        {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
+      </button>
+      <button className={`managerTab ${managerTab==="emergency"?"managerTabActive":""}`} onClick={()=>{setManagerTab("emergency");if(selectedBuildingId)loadEmergencyContacts(selectedBuildingId)}}>
+        🚨 {t("Emergency Contacts")}
+      </button>
+      <button className={`managerTab ${managerTab==="audit"?"managerTabActive":""}`} onClick={()=>{setManagerTab("audit");loadAuditLog()}}>
+        🧾 {t("Activity & Audit Log")}
+      </button>
+      {managerData?.memberRole==="company_admin"&&<button className={`managerTab ${managerTab==="team"?"managerTabActive":""}`} onClick={()=>setManagerTab("team")}>
+        👥 {t("Team Management")}
+        {team.filter((m:any)=>m.role==="manager").length>0&&<span className="tabCount">{team.filter((m:any)=>m.role==="manager").length}</span>}
+      </button>}
+      {isPlatformOwner&&<button className={`managerTab ${managerTab==="customers"?"managerTabActive":""}`} onClick={()=>{setManagerTab("customers");loadCustomers()}}>
+        🏢 {t("Customer Administration")}
+      </button>}
+    </div>
+
+      </aside>
+      <section className="managerContent">
     <div className="card buildingSelectorCard">
       <div className="row buildingSelectorHeader">
         <div>
@@ -1620,29 +1651,6 @@ export default function Home(){
           <span className="muted">{managerData?.selectedBuilding?.address}</span>
         </div>
       </>:<><p>{t("No buildings are assigned to this management company yet.")}</p>{managerData?.memberRole==="company_admin"&&<button className="primary" onClick={()=>location.href="/manager/buildings/new"}>+ {t("Create New Building")}</button>}</>}
-    </div>
-
-    <div className="managerTabs">
-      <button className={`managerTab ${managerTab==="dashboard"?"managerTabActive":""}`} onClick={()=>setManagerTab("dashboard")}>
-        {t("Dashboard")}
-      </button>
-      <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
-        {t("Pending Tenant Fees")}
-        {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
-      </button>
-      <button className={`managerTab ${managerTab==="emergency"?"managerTabActive":""}`} onClick={()=>{setManagerTab("emergency");if(selectedBuildingId)loadEmergencyContacts(selectedBuildingId)}}>
-        🚨 {t("Emergency Contacts")}
-      </button>
-      <button className={`managerTab ${managerTab==="audit"?"managerTabActive":""}`} onClick={()=>{setManagerTab("audit");loadAuditLog()}}>
-        {t("Activity & Audit Log")}
-      </button>
-      {managerData?.memberRole==="company_admin"&&<button className={`managerTab ${managerTab==="team"?"managerTabActive":""}`} onClick={()=>setManagerTab("team")}>
-        {t("Team Management")}
-        {team.filter((m:any)=>m.role==="manager").length>0&&<span className="tabCount">{team.filter((m:any)=>m.role==="manager").length}</span>}
-      </button>}
-      {isPlatformOwner&&<button className={`managerTab ${managerTab==="customers"?"managerTabActive":""}`} onClick={()=>{setManagerTab("customers");loadCustomers()}}>
-        {t("Customer Administration")}
-      </button>}
     </div>
 
     {managerTab==="dashboard"&&<>
@@ -2174,6 +2182,9 @@ export default function Home(){
         </div>)}
       </div>
     </>}
+
+      </section>
+    </div>
 
     {supportWorkspace&&<div className="modal supportWorkspaceModal"><div className="modalcard supportWorkspaceCard">
       <div className="row">

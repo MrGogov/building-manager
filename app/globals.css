@@ -327,3 +327,68 @@ html[data-theme="dark"] .photoButton{background:#343a36;color:#e8eee9}
 @media(max-width:620px){
   .themeToggle{width:44px;min-width:44px;height:44px}
 }
+
+
+/* Desktop manager sidebar workspace */
+.managerShell{max-width:1500px;padding-left:22px;padding-right:22px}
+.managerWorkspace{display:grid;grid-template-columns:230px minmax(0,1fr);gap:22px;align-items:start}
+.managerSidebar{position:sticky;top:18px;align-self:start;min-height:calc(100vh - 36px);padding:18px 12px;border:1px solid var(--line);border-radius:20px;background:var(--card)}
+.managerSidebarBrand{display:flex;align-items:center;gap:11px;padding:7px 9px 18px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.managerSidebarLogo{width:42px;height:42px;border-radius:12px;background:#e8f2e9;display:flex;align-items:center;justify-content:center;font-size:22px}
+.managerSidebarBrand>div:last-child{display:flex;flex-direction:column;gap:2px}
+.managerSidebarBrand b{font-size:15px}
+.managerSidebarBrand span{font-size:11px;color:var(--muted)}
+.managerSidebar .managerTabs{display:flex;flex-direction:column;width:100%;max-width:none;margin:0;padding:0;background:transparent;border-radius:0;gap:5px;overflow:visible}
+.managerSidebar .managerTab{width:100%;justify-content:flex-start;text-align:left;min-height:46px;padding:11px 12px;border-radius:12px;white-space:normal}
+.managerSidebar .managerTabActive{background:#e8f2e9;color:#254c31;box-shadow:none}
+.managerSidebar .tabCount{margin-left:auto}
+.managerContent{min-width:0}
+.managerContent>.buildingSelectorCard{margin-top:0}
+.managerTop{margin-bottom:18px}
+
+/* Improve dark-mode contrast for formerly white tiles */
+html[data-theme="dark"] .filterTile{
+  background:#383838;color:#f1f1f1;border-color:#515151;
+}
+html[data-theme="dark"] .filterTile.yellowTile{
+  background:#4a432e;color:#ffe9a5;border-color:#675d39;
+}
+html[data-theme="dark"] .filterTile.redTile{
+  background:#4a3232;color:#ffc0bc;border-color:#684342;
+}
+html[data-theme="dark"] .filterTile.filterActive{
+  outline-color:#78b77b;
+}
+html[data-theme="dark"] .buildingAccessOption{
+  background:#3a3a3a;color:#f0f0f0;border-color:#515151;
+}
+html[data-theme="dark"] .buildingAccessOption small{color:#c0c0c0}
+html[data-theme="dark"] .selectedBuildingSummary{
+  background:#363636;color:#f3f3f3;border-color:#4e4e4e;
+}
+html[data-theme="dark"] .managerSidebar{
+  background:#292929;border-color:#414141;
+}
+html[data-theme="dark"] .managerSidebarLogo{background:#35463a}
+html[data-theme="dark"] .managerSidebar .managerTab{color:#c9d0cc}
+html[data-theme="dark"] .managerSidebar .managerTab:hover{background:#343734;color:#fff}
+html[data-theme="dark"] .managerSidebar .managerTabActive{background:#354b3a;color:#eaf5ec}
+html[data-theme="dark"] .managerSidebarBrand{border-color:#414141}
+
+/* Keep the current mobile experience: horizontal navigation instead of sidebar */
+@media(max-width:900px){
+  .managerShell{max-width:920px;padding-left:14px;padding-right:14px}
+  .managerWorkspace{display:block}
+  .managerSidebar{position:static;min-height:0;padding:0;border:0;background:transparent}
+  .managerSidebarBrand{display:none}
+  .managerSidebar .managerTabs{
+    flex-direction:row;width:100%;max-width:100%;margin:18px 0 4px;padding:5px;
+    background:#eef2ef;border-radius:15px;overflow-x:auto;scrollbar-width:none
+  }
+  .managerSidebar .managerTab{width:auto;min-width:max-content;justify-content:center;padding:10px 14px}
+  .managerSidebar .managerTabActive{background:#fff;color:#24312a;box-shadow:0 2px 8px rgba(36,49,42,.08)}
+  html[data-theme="dark"] .managerSidebar .managerTabs{background:#292d2a}
+  html[data-theme="dark"] .managerSidebar .managerTab{color:#bfc8c2}
+  html[data-theme="dark"] .managerSidebar .managerTabActive{background:#3a403c;color:#fff}
+  .managerContent>.buildingSelectorCard{margin-top:16px}
+}
