@@ -54,6 +54,7 @@ export default function Home(){
   const[lastCreatedCustomer,setLastCreatedCustomer]=useState<any>(null);
   const[customers,setCustomers]=useState<any[]>([]);
   const[customersLoading,setCustomersLoading]=useState(false);
+  const[expandedCustomerId,setExpandedCustomerId]=useState<string|null>(null);
   const[auditLog,setAuditLog]=useState<any[]>([]);
   const[auditLoading,setAuditLoading]=useState(false);
   const[deleteCustomer,setDeleteCustomer]=useState<any>(null);
@@ -252,7 +253,7 @@ export default function Home(){
 
   async function recordAudit(action:string,entityType:string,entityId:string|null,details:any={},buildingId:string|null=selectedBuildingId||null){
     if(!session)return;
-    try{await s.rpc("record_audit_event",{p_action:action,p_entity_type:entityType,p_entity_id:entityId,p_building_id:buildingId,p_details:details||{}})}catch{}
+    try{await s.rpc("record_audit_event",{p_action:action,p_target_type:entityType,p_target_id:entityId,p_building_id:buildingId,p_details:details||{}})}catch{}
   }
 
   async function loadAuditLog(){
@@ -1846,7 +1847,7 @@ export default function Home(){
           <div><b>{auditActionLabel(a.action)}</b><div className="muted">{a.actor_name||a.actor_email||t("System")} • {new Date(a.created_at).toLocaleString(dateLocale)}</div>
           {a.building_name&&<div className="teamBuildingChips"><span className="tag">{a.building_name}</span></div>}
           {a.details&&Object.keys(a.details).length>0&&<div className="muted">{Object.entries(a.details).filter(([k])=>!["password","temporary_password","token"].includes(k)).slice(0,5).map(([k,v]:any)=>`${k.replaceAll("_"," ")}: ${Array.isArray(v)?v.length+" item(s)":String(v)}`).join(" • ")}</div>}</div>
-          <span className="tag">{a.entity_type}</span>
+          <span className="tag">{a.target_type}</span>
         </div>)}
       </div>
     </>}
@@ -1879,14 +1880,38 @@ export default function Home(){
           <div className="muted">{t("The temporary password is not stored or shown again.")}</div>
         </div>}
 
-        <div className="row customerListHeader"><div><h3>{t("Current Customers")}</h3><div className="muted">{t("Removing a customer permanently removes its buildings and related operational data.")}</div></div><button className="secondary" disabled={customersLoading} onClick={loadCustomers}>{customersLoading?t("Loading…"):t("Refresh")}</button></div>
-        {customersLoading?<p>{t("Loading…")}</p>:customers.length===0?<p>{t("No customer accounts found.")}</p>:customers.map((c:any)=><div className="teamMemberRow" key={c.id}>
-          <div>
-            <b>{c.name}</b>
-            <div className="muted">{c.admin?.full_name||t("Company Admin")} • {c.admin?.email||c.email||""}</div>
-            <div className="teamBuildingChips"><span className="tag">{c.building_count||0} {(c.building_count||0)===1?t("building"):t("buildings")}</span></div>
+        <div className="row customerListHeader"><div><h3>{t("Customer Portfolio")}</h3><div className="muted">{t("Read-only overview of every customer and the buildings they manage.")}</div></div><button className="secondary" disabled={customersLoading} onClick={loadCustomers}>{customersLoading?t("Loading…"):t("Refresh")}</button></div>
+        {customersLoading?<p>{t("Loading…")}</p>:customers.length===0?<p>{t("No customer accounts found.")}</p>:customers.map((c:any)=><div className="card" key={c.id}>
+          <div className="teamMemberRow">
+            <div>
+              <b>{c.name}</b>
+              <div className="muted">{c.admin?.full_name||t("Company Admin")} • {c.admin?.email||c.email||""}</div>
+              <div className="teamBuildingChips">
+                <span className="tag">🏢 {c.building_count||0} {t("buildings")}</span>
+                <span className="tag">🏠 {c.apartment_count||0} {t("apartments")}</span>
+                <span className="tag">👥 {c.active_tenant_count||0} {t("active tenants")}</span>
+                <span className="tag">🛠️ {c.open_issue_count||0} {t("open issues")}</span>
+              </div>
+            </div>
+            <div className="teamMemberActions">
+              <button className="secondary" onClick={()=>setExpandedCustomerId(expandedCustomerId===c.id?null:c.id)}>{expandedCustomerId===c.id?t("Hide Buildings"):t("View Buildings")}</button>
+              <button className="danger" onClick={()=>{setDeleteCustomer(c);setDeleteCustomerConfirm("");setError("");setMsg("")}}>{t("Remove Customer")}</button>
+            </div>
           </div>
-          <div className="teamMemberActions"><button className="danger" onClick={()=>{setDeleteCustomer(c);setDeleteCustomerConfirm("");setError("");setMsg("")}}>{t("Remove Customer")}</button></div>
+          {expandedCustomerId===c.id&&<>
+            <div className="notice">🔒 {t("Platform Owner view is read-only.")}</div>
+            {(c.buildings||[]).length===0?<p>{t("This customer has not created any buildings yet.")}</p>:(c.buildings||[]).map((b:any)=><div className="teamMemberRow" key={b.id}>
+              <div>
+                <b>🏢 {b.name}</b>
+                <div className="muted">{[b.address,b.city,b.postal_code].filter(Boolean).join(" • ")}</div>
+              </div>
+              <div className="teamBuildingChips">
+                <span className="tag">🏠 {b.apartment_count||0} {t("apartments")}</span>
+                <span className="tag">👥 {b.active_tenant_count||0} {t("active tenants")}</span>
+                <span className="tag">🛠️ {b.open_issue_count||0} {t("open issues")}</span>
+              </div>
+            </div>)}
+          </>}
         </div>)}
       </div>
     </>}
