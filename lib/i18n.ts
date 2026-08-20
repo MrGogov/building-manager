@@ -223,6 +223,21 @@ const bg:Record<string,string>={
   "Create Manager Account":"Създай акаунт на управител",
   "Manager invitation accepted.":"Поканата за управител е приета.",
   "Open Manager Dashboard":"Отвори таблото на управителя",
+  "Apartment Setup":"Настройка на апартаменти",
+  "Manage apartment numbers and add new apartments.":"Управлявайте номерата на апартаментите и добавяйте нови апартаменти.",
+  "apartments":"апартамента",
+  "Add Apartments":"Добави апартаменти",
+  "Enter apartment numbers separated by commas or new lines.":"Въведете номерата на апартаментите, разделени със запетаи или на нов ред.",
+  "Example apartment numbers":"Напр.: 1, 2, 3A, 3B",
+  "Rename Apartment":"Преименувай апартамент",
+  "Choose apartment":"Изберете апартамент",
+  "New apartment number":"Нов номер на апартамент",
+  "Save Apartment Number":"Запази номера",
+  "Apartment Directory":"Списък с апартаменти",
+  "Enter at least one apartment number.":"Въведете поне един номер на апартамент.",
+  "Apartments created":"Създадени апартаменти",
+  "Skipped duplicates":"Пропуснати дублирани номера",
+  "Apartment number updated.":"Номерът на апартамента е обновен.",
 };
 
 export function useLanguage(){

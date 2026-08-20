@@ -40,7 +40,10 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[issueApartmentFocus,setIssueApartmentFocus]=useState<string|null>(null);
-  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team">("dashboard");
+  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team"|"apartments">("dashboard");
+  const[newApartmentNumbers,setNewApartmentNumbers]=useState("");
+  const[renameApartmentId,setRenameApartmentId]=useState("");
+  const[renameApartmentNumber,setRenameApartmentNumber]=useState("");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
   const[buildingNoticesOpen,setBuildingNoticesOpen]=useState(false);
@@ -237,6 +240,7 @@ export default function Home(){
     setApartmentOverviewTab("issues");
     setApartmentOverviewOpen(false);
     setBuildingNoticesOpen(false);
+    setNewApartmentNumbers("");setRenameApartmentId("");setRenameApartmentNumber("");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId,managerData.memberRole,managerData.companyId);
   }
@@ -307,6 +311,29 @@ export default function Home(){
     if(error){setError(error.message);return}
     setMsg("Pending invitation revoked.");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId);
+  }
+
+  async function addApartments(){
+    if(!selectedBuildingId)return;
+    const numbers=Array.from(new Set(newApartmentNumbers.split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean)));
+    if(numbers.length===0){setError(t("Enter at least one apartment number."));return}
+    setError("");setMsg("");
+    const {data,error}=await s.rpc("add_building_apartments",{p_building_id:selectedBuildingId,p_apartment_numbers:numbers});
+    if(error){setError(error.message);return}
+    const result=data?.[0];
+    setNewApartmentNumbers("");
+    setMsg(`${t("Apartments created")}: ${result?.created_count||0}${result?.skipped_count?` • ${t("Skipped duplicates")}: ${result.skipped_count}`:""}`);
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId,managerData.memberRole,managerData.companyId);
+  }
+
+  async function renameApartment(){
+    if(!renameApartmentId||!renameApartmentNumber.trim())return;
+    setError("");setMsg("");
+    const {error}=await s.rpc("rename_apartment",{p_apartment_id:renameApartmentId,p_apartment_number:renameApartmentNumber.trim()});
+    if(error){setError(error.message);return}
+    setMsg(t("Apartment number updated."));
+    setRenameApartmentId("");setRenameApartmentNumber("");
+    await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,selectedBuildingId,managerData.memberRole,managerData.companyId);
   }
 
   function managerInviteUrl(token:string){
@@ -866,6 +893,9 @@ export default function Home(){
         {t("Pending Tenant Fees")}
         {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
       </button>
+      <button className={`managerTab ${managerTab==="apartments"?"managerTabActive":""}`} onClick={()=>setManagerTab("apartments")}>
+        {t("Apartment Setup")}
+      </button>
       {managerData?.memberRole==="company_admin"&&<button className={`managerTab ${managerTab==="team"?"managerTabActive":""}`} onClick={()=>setManagerTab("team")}>
         {t("Team Management")}
         {team.filter((m:any)=>m.role==="manager").length>0&&<span className="tabCount">{team.filter((m:any)=>m.role==="manager").length}</span>}
@@ -1233,6 +1263,53 @@ export default function Home(){
       })}
     </div>
 
+    </>}
+
+    {managerTab==="apartments"&&<>
+      <div className="card">
+        <div className="row">
+          <div><h2>🏢 {t("Apartment Setup")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • {t("Manage apartment numbers and add new apartments.")}</div></div>
+          <span className="tag">{managerData?.apartments?.length||0} {t("apartments")}</span>
+        </div>
+
+        <div className="apartmentSetupGrid">
+          <div className="apartmentSetupBox">
+            <h3>{t("Add Apartments")}</h3>
+            <p className="muted">{t("Enter apartment numbers separated by commas or new lines.")}</p>
+            <textarea value={newApartmentNumbers} onChange={e=>setNewApartmentNumbers(e.target.value)} placeholder={t("Example apartment numbers")}/>
+            <button className="primary full" onClick={addApartments}>{t("Add Apartments")}</button>
+          </div>
+
+          <div className="apartmentSetupBox">
+            <h3>{t("Rename Apartment")}</h3>
+            <label>{t("Apartment")}</label>
+            <select value={renameApartmentId} onChange={e=>{
+              setRenameApartmentId(e.target.value);
+              const a=managerData.apartments.find((x:any)=>x.id===e.target.value);
+              setRenameApartmentNumber(a?.apartment_number||"");
+            }}>
+              <option value="">{t("Choose apartment")}</option>
+              {(managerData?.apartments||[]).map((a:any)=><option key={a.id} value={a.id}>{t("Apartment")} {a.apartment_number}</option>)}
+            </select>
+            <label>{t("New apartment number")}</label>
+            <input value={renameApartmentNumber} onChange={e=>setRenameApartmentNumber(e.target.value)} disabled={!renameApartmentId}/>
+            <button className="primary full" disabled={!renameApartmentId||!renameApartmentNumber.trim()} onClick={renameApartment}>{t("Save Apartment Number")}</button>
+          </div>
+        </div>
+
+        <div className="apartmentDirectory">
+          <h3>{t("Apartment Directory")}</h3>
+          <div className="apartmentChipGrid">
+            {(managerData?.apartments||[]).map((a:any)=>{
+              const resident=community.find((r:any)=>r.apartment_id===a.id);
+              return <button className="apartmentDirectoryItem" key={a.id} onClick={()=>openApartmentFromStatus(a.id)}>
+                <b>{t("Apartment")} {a.apartment_number}</b>
+                <span className="muted">{resident?.tenant_name||t("Vacant")}</span>
+              </button>
+            })}
+          </div>
+        </div>
+      </div>
     </>}
 
     {managerTab==="team"&&managerData?.memberRole==="company_admin"&&<>
