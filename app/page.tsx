@@ -1020,7 +1020,7 @@ export default function Home(){
   if(!session)return <main className="shell"><div className="card authCard" onKeyDown={handleAuthKeyDown}>
     <div className="row"><h1>🏠 {t("Building Manager")}</h1>{languageSelector}</div><p>{t("Sign in to continue.")}</p>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
-    {authMode==="signup"&&<><label>{t("Full name")}</label><input value={fullName} onChange={e=>setFullName(e.target.value)}/></>}
+    
     <label>{t("Email")}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
     <label>{t("Password")}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
     <button className="primary full" onClick={signIn}>{t("Log in")}</button>
