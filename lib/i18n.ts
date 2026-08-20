@@ -174,6 +174,19 @@ const bg:Record<string,string>={
   "building":"сграда",
   "Editing Apartment":"Редактиране на апартамент",
   "The next due date advances automatically after payment.":"Следващият падеж се премества автоматично след отбелязване на плащането.",
+  "Published Notices":"Публикувани съобщения",
+  "Update dates and times, or mark completed notices.":"Променяйте датите и часовете или отбелязвайте приключените съобщения.",
+  "No notices published yet.":"Все още няма публикувани съобщения.",
+  "Completed":"Приключено",
+  "Edit":"Редактирай",
+  "Reopen":"Отвори отново",
+  "Mark Completed":"Маркирай като приключено",
+  "Edit Notice":"Редактиране на съобщение",
+  "Save Changes":"Запази промените",
+  "Notice updated.":"Съобщението е обновено.",
+  "Mark this notice as completed?":"Да се маркира ли това съобщение като приключено?",
+  "Notice marked as completed.":"Съобщението е маркирано като приключено.",
+  "Notice reopened.":"Съобщението е отворено отново.",
 };
 
 export function useLanguage(){

@@ -43,6 +43,12 @@ export default function Home(){
   const[noticeType,setNoticeType]=useState<"planned_work"|"general"|"important">("planned_work");
   const[noticeTitle,setNoticeTitle]=useState(""); const[noticeMessage,setNoticeMessage]=useState("");
   const[noticeStart,setNoticeStart]=useState(""); const[noticeEnd,setNoticeEnd]=useState("");
+  const[editingNotice,setEditingNotice]=useState<any>(null);
+  const[editNoticeType,setEditNoticeType]=useState<"planned_work"|"general"|"important">("planned_work");
+  const[editNoticeTitle,setEditNoticeTitle]=useState("");
+  const[editNoticeMessage,setEditNoticeMessage]=useState("");
+  const[editNoticeStart,setEditNoticeStart]=useState("");
+  const[editNoticeEnd,setEditNoticeEnd]=useState("");
 
   const[currentPeriod,setCurrentPeriod]=useState(new Date().toISOString().slice(0,7));
   const[selectedApartment,setSelectedApartment]=useState<any>(null);
@@ -108,7 +114,7 @@ export default function Home(){
 
     const {data:i}=await s.from("issues").select("*").eq("tenant_id",uid).order("created_at",{ascending:false});
     setIssues(i||[]);
-    const {data:n}=await s.from("announcements").select("*").eq("building_id",apt.building_id).order("created_at",{ascending:false});
+    const {data:n}=await s.from("announcements").select("*").eq("building_id",apt.building_id).is("completed_at",null).order("created_at",{ascending:false});
     setAnnouncements(n||[]);
     const latestNoticeId=n?.[0]?.id||"none";
     const seen=typeof window!=="undefined"?localStorage.getItem(notificationSeenKey(apt.building_id,uid)):null;
@@ -318,6 +324,62 @@ export default function Home(){
     });
     if(e){setError(e.message);return}
     setNoticeTitle("");setNoticeMessage("");setNoticeStart("");setNoticeEnd("");setMsg("Building notice published.");
+    await loadManager(session.user.id,managerData.profile);
+  }
+
+  function toLocalInput(value:string|null){
+    if(!value)return "";
+    const d=new Date(value);
+    const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);
+    return local.toISOString().slice(0,16);
+  }
+
+  function openNoticeEditor(n:any){
+    setEditingNotice(n);
+    setEditNoticeType(n.type);
+    setEditNoticeTitle(n.title||"");
+    setEditNoticeMessage(n.message||"");
+    setEditNoticeStart(toLocalInput(n.starts_at));
+    setEditNoticeEnd(toLocalInput(n.ends_at));
+  }
+
+  async function updateAnnouncement(){
+    if(!editingNotice||!editNoticeTitle.trim()||!editNoticeMessage.trim())return;
+    setError("");setMsg("");
+    const {error:e}=await s.from("announcements").update({
+      type:editNoticeType,
+      title:editNoticeTitle.trim(),
+      message:editNoticeMessage.trim(),
+      starts_at:editNoticeStart?new Date(editNoticeStart).toISOString():null,
+      ends_at:editNoticeEnd?new Date(editNoticeEnd).toISOString():null,
+      updated_at:new Date().toISOString()
+    }).eq("id",editingNotice.id);
+    if(e){setError(e.message);return}
+    setEditingNotice(null);
+    setMsg(t("Notice updated."));
+    await loadManager(session.user.id,managerData.profile);
+  }
+
+  async function completeAnnouncement(id:string){
+    const ok=window.confirm(t("Mark this notice as completed?"));
+    if(!ok)return;
+    setError("");setMsg("");
+    const {error:e}=await s.from("announcements").update({
+      completed_at:new Date().toISOString(),
+      updated_at:new Date().toISOString()
+    }).eq("id",id);
+    if(e){setError(e.message);return}
+    setMsg(t("Notice marked as completed."));
+    await loadManager(session.user.id,managerData.profile);
+  }
+
+  async function reopenAnnouncement(id:string){
+    const {error:e}=await s.from("announcements").update({
+      completed_at:null,
+      updated_at:new Date().toISOString()
+    }).eq("id",id);
+    if(e){setError(e.message);return}
+    setMsg(t("Notice reopened."));
     await loadManager(session.user.id,managerData.profile);
   }
 
@@ -635,7 +697,14 @@ export default function Home(){
       </div>
 
       <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 {t("Notifications")}</h2><span className="tag">{announcements.length}</span></div>
-        {announcements.length===0?<p>{t("No building notices yet.")}</p>:announcements.map(n=><div className="issue" key={n.id}><b>{noticeIcon(n.type)} {n.title}</b><p>{n.message}</p></div>)}
+        {announcements.length===0?<p>{t("No building notices yet.")}</p>:announcements.map(n=><div className="issue noticeTenantCard" key={n.id}>
+          <div className="row"><b>{noticeIcon(n.type)} {n.title}</b><span className="tag">{t(n.type==="planned_work"?"Planned works":n.type==="important"?"Important notice":"General announcement")}</span></div>
+          <p>{n.message}</p>
+          {(n.starts_at||n.ends_at)&&<div className="noticeSchedule">
+            {n.starts_at&&<div><span className="muted">{t("Starts")}</span><b>{new Date(n.starts_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+            {n.ends_at&&<div><span className="muted">{t("Ends")}</span><b>{new Date(n.ends_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+          </div>}
+        </div>)}
       </div>
 
       {showReport&&<div className="modal"><div className="modalcard"><h2>{t("Report an issue")}</h2>
@@ -942,6 +1011,30 @@ export default function Home(){
       <button className="primary full" onClick={createAnnouncement}>{t("Publish Notice")}</button>
     </div>
 
+    <div className="card">
+      <div className="row"><div><h2>📋 {t("Published Notices")}</h2><div className="muted">{t("Update dates and times, or mark completed notices.")}</div></div><span className="tag">{announcements.length}</span></div>
+      {announcements.length===0?<p>{t("No notices published yet.")}</p>:announcements.map((n:any)=><div className={`managedNotice ${n.completed_at?"managedNoticeCompleted":""}`} key={n.id}>
+        <div className="row managedNoticeTop">
+          <div>
+            <b>{noticeIcon(n.type)} {n.title}</b>
+            <div className="muted">{t(n.type==="planned_work"?"Planned works":n.type==="important"?"Important notice":"General announcement")}</div>
+          </div>
+          <span className={`feeBadge ${n.completed_at?"feePaid":"feePending"}`}>{n.completed_at?t("Completed"):t("Active")}</span>
+        </div>
+        <p>{n.message}</p>
+        <div className="noticeSchedule">
+          {n.starts_at&&<div><span className="muted">{t("Starts")}</span><b>{new Date(n.starts_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+          {n.ends_at&&<div><span className="muted">{t("Ends")}</span><b>{new Date(n.ends_at).toLocaleString(dateLocale,{dateStyle:"medium",timeStyle:"short"})}</b></div>}
+        </div>
+        <div className="noticeActions">
+          <button className="secondary" onClick={()=>openNoticeEditor(n)}>{t("Edit")}</button>
+          {n.completed_at
+            ? <button className="secondary" onClick={()=>reopenAnnouncement(n.id)}>{t("Reopen")}</button>
+            : <button className="primary" onClick={()=>completeAnnouncement(n.id)}>{t("Mark Completed")}</button>}
+        </div>
+      </div>)}
+    </div>
+
 
     </>}
 
@@ -958,6 +1051,24 @@ export default function Home(){
     </div>
 
     </>}
+
+    {editingNotice&&<div className="modal"><div className="modalcard">
+      <h2>{t("Edit Notice")}</h2>
+      <label>{t("Notice type")}</label>
+      <select value={editNoticeType} onChange={e=>setEditNoticeType(e.target.value as any)}>
+        <option value="planned_work">🔧 {t("Planned works")}</option>
+        <option value="general">📣 {t("General announcement")}</option>
+        <option value="important">⚠️ {t("Important notice")}</option>
+      </select>
+      <label>{t("Title")}</label><input value={editNoticeTitle} onChange={e=>setEditNoticeTitle(e.target.value)}/>
+      <label>{t("Message")}</label><textarea value={editNoticeMessage} onChange={e=>setEditNoticeMessage(e.target.value)}/>
+      <div className="grid2">
+        <div><label>{t("Starts")}</label><input type="datetime-local" value={editNoticeStart} onChange={e=>setEditNoticeStart(e.target.value)}/></div>
+        <div><label>{t("Ends")}</label><input type="datetime-local" value={editNoticeEnd} onChange={e=>setEditNoticeEnd(e.target.value)}/></div>
+      </div>
+      <button className="primary full" onClick={updateAnnouncement}>{t("Save Changes")}</button>
+      <button className="secondary full" onClick={()=>setEditingNotice(null)}>{t("Cancel")}</button>
+    </div></div>}
 
     {inviteApartment&&<div className="modal"><div className="modalcard">
       <h2>Invite tenant — Apartment {inviteApartment.apartment_number}</h2>
