@@ -336,6 +336,15 @@ const bg:Record<string,string>={
   "Fee settings updated":"Обновени настройки за такса",
   "Monthly fees generated":"Генерирани месечни такси",
   "Fee status updated":"Обновен статус на такса",
+  "Customer Portfolio":"Клиентско портфолио",
+  "Read-only overview of every customer and the buildings they manage.":"Преглед само за четене на всички клиенти и сградите, които управляват.",
+  "apartments":"апартамента",
+  "active tenants":"активни живущи",
+  "open issues":"отворени сигнали",
+  "View Buildings":"Виж сградите",
+  "Hide Buildings":"Скрий сградите",
+  "Platform Owner view is read-only.":"Прегледът за собственика на платформата е само за четене.",
+  "This customer has not created any buildings yet.":"Този клиент все още не е създал сгради.",
 };
 
 export function useLanguage(){
