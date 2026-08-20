@@ -30,6 +30,7 @@ export default function Home(){
 
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
+  const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
   const[notificationsSeen,setNotificationsSeen]=useState(false);
   const[severity,setSeverity]=useState<"yellow"|"red">("yellow");
   const[description,setDescription]=useState(""); const[callback,setCallback]=useState(false);
@@ -195,6 +196,7 @@ export default function Home(){
     setSelectedApartmentId("");
     setSelectedApartment(null);
     setIssueFilter("active");
+    setManagerTab("dashboard");
     setMsg("");setError("");
     await loadManagerBuilding(session.user.id,managerData.profile,managerData.buildings,buildingId);
   }
@@ -531,7 +533,18 @@ export default function Home(){
         <div className="row"><div><h2 style={{margin:0}}>🏢 Building Manager</h2><p style={{marginBottom:0}}>Tap to make a direct report</p></div><b>›</b></div>
       </button>
 
-      <div className="card communityCard">
+      <div className="managerTabs">
+      <button className={`managerTab ${managerTab==="dashboard"?"managerTabActive":""}`} onClick={()=>setManagerTab("dashboard")}>
+        Dashboard
+      </button>
+      <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
+        Pending Tenant Fees
+        {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
+      </button>
+    </div>
+
+    {managerTab==="dashboard"&&<>
+    <div className="card communityCard">
         <div className="row">
           <div><h2>Building Community</h2><div className="muted">Status only — issue details remain private.</div></div>
           <span className="tag">{community.length} residents</span>
@@ -798,8 +811,20 @@ export default function Home(){
       </div>}
     </div>
 
+    <div className="card"><h2>📣 Publish Building Notice</h2><div className="muted">Publishing to {managerData?.selectedBuilding?.name||"selected building"} only.</div>
+      <label>Notice type</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 Planned works</option><option value="general">📣 General announcement</option><option value="important">⚠️ Important notice</option></select>
+      <label>Title</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
+      <label>Message</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
+      <div className="grid2"><div><label>Starts</label><input type="datetime-local" value={noticeStart} onChange={e=>setNoticeStart(e.target.value)}/></div><div><label>Ends</label><input type="datetime-local" value={noticeEnd} onChange={e=>setNoticeEnd(e.target.value)}/></div></div>
+      <button className="primary full" onClick={createAnnouncement}>Publish Notice</button>
+    </div>
+
+
+    </>}
+
+    {managerTab==="fees"&&<>
     <div className="card">
-      <div className="row"><h2>Pending Tenant Fees</h2><span className="tag">{pendingFees.length}</span></div>
+      <div className="row"><div><h2>Pending Tenant Fees</h2><div className="muted">Outstanding fees for {managerData?.selectedBuilding?.name||"the selected building"}.</div></div><span className="tag">{pendingFees.length}</span></div>
       {pendingFees.length===0?<p>No pending fees.</p>:pendingFees.map(f=>{
         const a=managerData.apartments.find((x:any)=>x.id===f.apartment_id);
         return <div className="apt" key={f.id}>
@@ -809,14 +834,7 @@ export default function Home(){
       })}
     </div>
 
-    <div className="card"><h2>📣 Publish Building Notice</h2><div className="muted">Publishing to {managerData?.selectedBuilding?.name||"selected building"} only.</div>
-      <label>Notice type</label><select value={noticeType} onChange={e=>setNoticeType(e.target.value as any)}><option value="planned_work">🔧 Planned works</option><option value="general">📣 General announcement</option><option value="important">⚠️ Important notice</option></select>
-      <label>Title</label><input value={noticeTitle} onChange={e=>setNoticeTitle(e.target.value)}/>
-      <label>Message</label><textarea value={noticeMessage} onChange={e=>setNoticeMessage(e.target.value)}/>
-      <div className="grid2"><div><label>Starts</label><input type="datetime-local" value={noticeStart} onChange={e=>setNoticeStart(e.target.value)}/></div><div><label>Ends</label><input type="datetime-local" value={noticeEnd} onChange={e=>setNoticeEnd(e.target.value)}/></div></div>
-      <button className="primary full" onClick={createAnnouncement}>Publish Notice</button>
-    </div>
-
+    </>}
 
     {inviteApartment&&<div className="modal"><div className="modalcard">
       <h2>Invite tenant — Apartment {inviteApartment.apartment_number}</h2>
