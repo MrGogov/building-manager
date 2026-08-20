@@ -722,6 +722,14 @@ export default function Home(){
     return t(value);
   }
 
+  function handleAuthKeyDown(e:React.KeyboardEvent){
+    if(e.key!=="Enter"||e.shiftKey)return;
+    const target=e.target as HTMLElement;
+    if(target.tagName==="TEXTAREA"||target.tagName==="BUTTON"||target.tagName==="SELECT")return;
+    e.preventDefault();
+    if(authMode==="login")signIn(); else signUpManager();
+  }
+
   const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")} aria-label="Language">
     <option value="en">EN</option>
     <option value="bg">BG</option>
@@ -729,7 +737,7 @@ export default function Home(){
 
   if(loading)return <main className="shell"><div className="card"><h1>{t("Loading…")}</h1></div></main>;
 
-  if(!session)return <main className="shell"><div className="card authCard">
+  if(!session)return <main className="shell"><div className="card authCard" onKeyDown={handleAuthKeyDown}>
     <div className="row"><h1>🏠 {t("Building Manager")}</h1>{languageSelector}</div><p>{authMode==="login"?t("Sign in to continue."):t("Create a manager account.")}</p>
     {error&&<div className="notice error">{error}</div>}{msg&&<div className="notice success">{msg}</div>}
     {authMode==="signup"&&<><label>{t("Full name")}</label><input value={fullName} onChange={e=>setFullName(e.target.value)}/></>}
@@ -1345,7 +1353,9 @@ export default function Home(){
       <button className="secondary full" onClick={()=>setEditingManager(null)}>{t("Cancel")}</button>
     </div></div>}
 
-    {editingNotice&&<div className="modal"><div className="modalcard">
+    {editingNotice&&<div className="modal"><div className="modalcard" onKeyDown={e=>{
+      if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();updateAnnouncement()}
+    }}>
       <h2>{t("Edit Notice")}</h2>
       <label>{t("Notice type")}</label>
       <select value={editNoticeType} onChange={e=>setEditNoticeType(e.target.value as any)}>
@@ -1363,7 +1373,9 @@ export default function Home(){
       <button className="secondary full" onClick={()=>setEditingNotice(null)}>{t("Cancel")}</button>
     </div></div>}
 
-    {inviteApartment&&<div className="modal"><div className="modalcard">
+    {inviteApartment&&<div className="modal"><div className="modalcard" onKeyDown={e=>{
+      if(e.key==="Enter"&&e.target instanceof HTMLInputElement&&inviteEmail.trim()){e.preventDefault();createTenantInvitation()}
+    }}>
       <h2>Invite tenant — Apartment {inviteApartment.apartment_number}</h2>
       <p>The invitation will be securely linked to {managerData?.selectedBuilding?.name}, Apartment {inviteApartment.apartment_number}.</p>
       <label>{t("Tenant email")}</label>

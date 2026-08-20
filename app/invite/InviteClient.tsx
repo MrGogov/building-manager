@@ -127,7 +127,12 @@ export default function InviteClient(){
 
   const languageSelector=<select className="languageSelect" value={language} onChange={e=>setLanguage(e.target.value as "en"|"bg")}><option value="en">EN</option><option value="bg">BG</option></select>;
 
-  return <div className="card" style={{maxWidth:520,margin:"60px auto"}}>
+  return <div className="card" style={{maxWidth:520,margin:"60px auto"}} onKeyDown={e=>{
+    if(e.key==="Enter"&&!e.shiftKey){
+      const target=e.target as HTMLElement;
+      if(target.tagName!=="BUTTON"&&target.tagName!=="SELECT"&&target.tagName!=="TEXTAREA"){e.preventDefault();createAccount()}
+    }
+  }}>
     <div className="row"><h1>🏠 {t("Tenant invitation")}</h1>{languageSelector}</div>
 
     {busy&&!inv&&!err&&<p>{t("Checking invitation…")}</p>}

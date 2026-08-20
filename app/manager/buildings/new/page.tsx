@@ -59,7 +59,14 @@ export default function NewBuildingPage(){
       </div>
     </div>
 
-    <div className="card newBuildingCard">
+    <div className="card newBuildingCard" onKeyDown={e=>{
+      if(e.key==="Enter"&&!e.shiftKey){
+        const target=e.target as HTMLElement;
+        if(target.tagName!=="TEXTAREA"&&target.tagName!=="BUTTON"&&target.tagName!=="SELECT"){
+          e.preventDefault();createBuilding();
+        }
+      }
+    }}>
       <h1>{t("Create New Building")}</h1>
       <p>{t("Create the building and its apartments in one step. Apartment numbers will initially be created as 1, 2, 3…")}</p>
       {error&&<div className="notice error">{error}</div>}

@@ -226,3 +226,32 @@ button{touch-action:manipulation}
 .offlineBanner{position:fixed;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);z-index:100;background:#8e3934;color:#fff;padding:9px 14px;border-radius:999px;font-size:12px;font-weight:900;box-shadow:0 6px 18px rgba(36,49,42,.18);white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}
 .installHelp{margin-top:10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#f7faf7;color:var(--ink);font-size:13px;line-height:1.7}.installHelp b{display:block;margin-bottom:5px}
 @media(max-width:620px){.authCard{margin:24px auto}.top .danger{min-height:44px}select{background-color:#fff}textarea{min-height:110px}.buildingPickerRow{gap:8px}}
+
+
+/* Desktop button feedback + keyboard accessibility */
+button{
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease,background-color .16s ease;
+}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{
+  outline:3px solid rgba(120,183,123,.34);
+  outline-offset:2px;
+}
+@media (hover:hover) and (pointer:fine){
+  button:not(:disabled):not(.residentApartmentButton):hover{
+    transform:translateY(-2px);
+    box-shadow:0 7px 18px rgba(36,49,42,.12);
+    filter:brightness(1.015);
+  }
+  .primary:not(:disabled):hover{box-shadow:0 8px 20px rgba(120,183,123,.28)}
+  .danger:not(:disabled):hover{box-shadow:0 8px 20px rgba(142,57,52,.14)}
+  .residentApartmentButton:hover .residentAvatar{
+    transform:translateY(-2px) scale(1.055);
+    box-shadow:0 8px 20px rgba(36,49,42,.15);
+  }
+}
+button:not(:disabled):active{
+  transform:translateY(0) scale(.975);
+  box-shadow:none;
+  transition-duration:.06s;
+}
+button:disabled{cursor:not-allowed;opacity:.58}
