@@ -74,7 +74,7 @@ export default function Home(){
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
   const[issueApartmentFocus,setIssueApartmentFocus]=useState<string|null>(null);
-  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"team"|"customers"|"audit">("dashboard");
+  const[managerTab,setManagerTab]=useState<"dashboard"|"fees"|"emergency"|"team"|"customers"|"audit">("dashboard");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
   const[buildingNoticesOpen,setBuildingNoticesOpen]=useState(false);
@@ -88,6 +88,13 @@ export default function Home(){
   const[companyIban,setCompanyIban]=useState("");
   const[companyPaymentNote,setCompanyPaymentNote]=useState("");
   const[companyPaymentName,setCompanyPaymentName]=useState("");
+  const[emergencyContacts,setEmergencyContacts]=useState<any[]>([]);
+  const[showEmergencyContacts,setShowEmergencyContacts]=useState(false);
+  const[editingEmergencyContact,setEditingEmergencyContact]=useState<any>(null);
+  const[emergencyType,setEmergencyType]=useState("Elevator emergency");
+  const[emergencyName,setEmergencyName]=useState("");
+  const[emergencyPhone,setEmergencyPhone]=useState("");
+  const[emergencyNote,setEmergencyNote]=useState("");
   const[managerNotificationsSeen,setManagerNotificationsSeen]=useState(false);
   const[showNotificationSettings,setShowNotificationSettings]=useState(false);
   const[notificationSaving,setNotificationSaving]=useState(false);
@@ -120,6 +127,7 @@ export default function Home(){
   const[feeAmount,setFeeAmount]=useState("");
   const[feeDueDay,setFeeDueDay]=useState("1");
 
+  useEffect(()=>{if(session&&role==="manager"&&selectedBuildingId)loadEmergencyContacts(selectedBuildingId)},[selectedBuildingId]);
   useEffect(()=>{
     const ua=navigator.userAgent;
     const ios=/iPhone|iPad|iPod/i.test(ua);
@@ -427,6 +435,40 @@ export default function Home(){
     await bootstrap(session.user.id);
   }
 
+  async function loadEmergencyContacts(buildingId:string){
+    const {data,error}=await s.from("emergency_contacts").select("*").eq("building_id",buildingId).order("sort_order").order("created_at");
+    if(error){console.warn("emergency contacts",error.message);return}
+    setEmergencyContacts(data||[]);
+  }
+
+  function resetEmergencyContactForm(){
+    setEditingEmergencyContact(null);setEmergencyType("Elevator emergency");setEmergencyName("");setEmergencyPhone("");setEmergencyNote("");
+  }
+
+  function editEmergencyContact(c:any){
+    setEditingEmergencyContact(c);setEmergencyType(c.contact_type||"Other");setEmergencyName(c.name||"");setEmergencyPhone(c.phone||"");setEmergencyNote(c.note||"");
+  }
+
+  async function saveEmergencyContact(){
+    if(!selectedBuildingId||!emergencyName.trim()||!emergencyPhone.trim()){setError(t("Contact name and phone number are required."));return}
+    setError("");setMsg("");
+    const payload={building_id:selectedBuildingId,contact_type:emergencyType.trim(),name:emergencyName.trim(),phone:emergencyPhone.trim(),note:emergencyNote.trim()||null};
+    const result=editingEmergencyContact
+      ? await s.from("emergency_contacts").update(payload).eq("id",editingEmergencyContact.id)
+      : await s.from("emergency_contacts").insert(payload);
+    if(result.error){setError(result.error.message);return}
+    await recordAudit(editingEmergencyContact?"emergency_contact.updated":"emergency_contact.created","emergency_contact",editingEmergencyContact?.id||null,{contact_type:emergencyType,name:emergencyName.trim()},selectedBuildingId);
+    resetEmergencyContactForm();await loadEmergencyContacts(selectedBuildingId);setMsg(t("Emergency contact saved."));
+  }
+
+  async function deleteEmergencyContact(c:any){
+    if(!confirm(t("Remove this emergency contact?")))return;
+    const {error}=await s.from("emergency_contacts").delete().eq("id",c.id);
+    if(error){setError(error.message);return}
+    await recordAudit("emergency_contact.removed","emergency_contact",c.id,{contact_type:c.contact_type,name:c.name},selectedBuildingId);
+    await loadEmergencyContacts(selectedBuildingId);setMsg(t("Emergency contact removed."));
+  }
+
   async function loadTenantPaymentDetails(buildingId:string){
     const {data,error}=await s.rpc("get_company_payment_details",{p_building_id:buildingId});
     if(error){console.warn("payment details",error.message);return}
@@ -680,7 +722,7 @@ export default function Home(){
     if(!at){setError("No active apartment is linked to this tenant.");return}
     const apt:any=at.apartments;
     setTenantData({profile,apartment:apt,building:apt.buildings});
-    await Promise.all([loadTenantPaymentDetails(apt.buildings.id),loadTenantFeeNotifications(uid)]);
+    await Promise.all([loadTenantPaymentDetails(apt.buildings.id),loadTenantFeeNotifications(uid),loadEmergencyContacts(apt.buildings.id)]);
 
     const {data:i}=await s.from("issues").select("*").eq("tenant_id",uid).order("created_at",{ascending:false});
     setIssues(i||[]);
@@ -1482,6 +1524,10 @@ export default function Home(){
         {issues.filter(i=>i.status!=="resolved").length===0?<p>{t("No active issues.")}</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b><span className="tag">{uiStatus(String(i.status))}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}</div>)}
       </div>
 
+      <button className="card" style={{width:"100%",textAlign:"left"}} onClick={()=>setShowEmergencyContacts(true)}>
+        <div className="row"><div><h2>🚨 {t("Emergency Contacts")}</h2><div className="muted">{t("Elevator, building manager and other urgent building contacts")}</div></div><span>›</span></div>
+      </button>
+
       <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 {t("Notifications")}</h2><span className="tag">{announcements.length+tenantFeeNotifications.length}</span></div>
         {tenantFeeNotifications.map((n:any)=><button className="issue noticeTenantCard" style={{width:"100%",textAlign:"left"}} key={n.id} onClick={()=>{setShowFeePayment(true);if(!n.read_at){s.from("tenant_notifications").update({read_at:new Date().toISOString()}).eq("id",n.id);setTenantFeeNotifications((prev:any[])=>prev.map(x=>x.id===n.id?{...x,read_at:new Date().toISOString()}:x))}}}>
           <div className="row"><b>💳 {t(n.title)}</b>{!n.read_at&&<span className="feeAlertLabel">{t("New")}</span>}</div><p>{n.message}</p><div className="muted">{new Date(n.created_at).toLocaleString(dateLocale)}</div>
@@ -1495,6 +1541,16 @@ export default function Home(){
           </div>}
         </div>)}
       </div>
+
+      {showEmergencyContacts&&<div className="modal"><div className="modalcard">
+        <div className="row"><div><h2>🚨 {t("Emergency Contacts")}</h2><div className="muted">{tenantData.building.name}</div></div><button className="secondary compactButton" onClick={()=>setShowEmergencyContacts(false)}>✕</button></div>
+        <div className="notice error">⚠️ <b>{t("For immediate danger to life or property, call 112.")}</b><div>{t("The contacts below are provided by your building management for building-related emergencies.")}</div></div>
+        {emergencyContacts.length===0?<p>{t("No emergency contacts have been provided for this building.")}</p>:emergencyContacts.map((c:any)=><div className="issue" key={c.id}>
+          <b>🚨 {t(c.contact_type)}</b><div>{c.name}</div>{c.note&&<div className="muted">{c.note}</div>}
+          <a className="primary full" style={{display:"block",textAlign:"center",marginTop:10,textDecoration:"none"}} href={`tel:${String(c.phone).replace(/[^+0-9]/g,"")}`}>📞 {c.phone}</a>
+        </div>)}
+        <button className="secondary full" onClick={()=>setShowEmergencyContacts(false)}>{t("Close")}</button>
+      </div></div>}
 
       {showFeePayment&&<div className="modal"><div className="modalcard">
         <div className="row"><div><h2>💳 {t("Payment Details")}</h2><div className="muted">{t("Monthly fee payment information")}</div></div><button className="secondary compactButton" onClick={()=>setShowFeePayment(false)}>✕</button></div>
@@ -1558,6 +1614,9 @@ export default function Home(){
       <button className={`managerTab ${managerTab==="fees"?"managerTabActive":""}`} onClick={()=>setManagerTab("fees")}>
         {t("Pending Tenant Fees")}
         {pendingFees.length>0&&<span className="tabCount">{pendingFees.length}</span>}
+      </button>
+      <button className={`managerTab ${managerTab==="emergency"?"managerTabActive":""}`} onClick={()=>{setManagerTab("emergency");if(selectedBuildingId)loadEmergencyContacts(selectedBuildingId)}}>
+        🚨 {t("Emergency Contacts")}
       </button>
       <button className={`managerTab ${managerTab==="audit"?"managerTabActive":""}`} onClick={()=>{setManagerTab("audit");loadAuditLog()}}>
         {t("Activity & Audit Log")}
@@ -1989,6 +2048,35 @@ export default function Home(){
               <button className="secondary" onClick={()=>navigator.clipboard.writeText(managerInviteUrl(inv.token))}>{t("Copy Link")}</button>
               <button className="danger" onClick={()=>revokeManagerInvite(inv.invitation_id)}>{t("Revoke")}</button>
             </div>
+          </div>)}
+        </>}
+      </div>
+    </>}
+
+    {managerTab==="emergency"&&<>
+      <div className="card">
+        <div className="row"><div><h2>🚨 {t("Emergency Contacts")}</h2><div className="muted">{t("Contacts shown only to residents of the selected building.")}</div></div></div>
+        {!selectedBuildingId?<p>{t("Select a building first.")}</p>:<>
+          <div className="notice">⚠️ {t("For immediate danger to life or property, call 112.")}</div>
+          <div className="teamInviteBox">
+            <h3>{editingEmergencyContact?t("Edit Emergency Contact"):t("Add Emergency Contact")}</h3>
+            <label>{t("Contact type")}</label>
+            <select value={emergencyType} onChange={e=>setEmergencyType(e.target.value)}>
+              <option value="Elevator emergency">{t("Elevator emergency")}</option>
+              <option value="Emergency building manager">{t("Emergency building manager")}</option>
+              <option value="Plumber">{t("Plumber")}</option>
+              <option value="Electrician">{t("Electrician")}</option>
+              <option value="Security">{t("Security")}</option>
+              <option value="Other">{t("Other")}</option>
+            </select>
+            <label>{t("Name / Company")}</label><input value={emergencyName} onChange={e=>setEmergencyName(e.target.value)} placeholder={t("Example: Lift Service Ltd.")}/>
+            <label>{t("Phone number")}</label><input type="tel" value={emergencyPhone} onChange={e=>setEmergencyPhone(e.target.value)} placeholder="+359..."/>
+            <label>{t("Note (optional)")}</label><textarea value={emergencyNote} onChange={e=>setEmergencyNote(e.target.value)} placeholder={t("Example: 24/7 emergency service")}/>
+            <div className="row"><button className="primary" onClick={saveEmergencyContact}>{t("Save Contact")}</button>{editingEmergencyContact&&<button className="secondary" onClick={resetEmergencyContactForm}>{t("Cancel")}</button>}</div>
+          </div>
+          {emergencyContacts.length===0?<p>{t("No emergency contacts added yet.")}</p>:emergencyContacts.map((c:any)=><div className="teamMemberRow" key={c.id}>
+            <div><b>🚨 {t(c.contact_type)}</b><div>{c.name}</div><div className="muted">{c.phone}{c.note?` • ${c.note}`:""}</div></div>
+            <div className="teamMemberActions"><button className="secondary" onClick={()=>editEmergencyContact(c)}>{t("Edit")}</button><button className="danger" onClick={()=>deleteEmergencyContact(c)}>{t("Remove")}</button></div>
           </div>)}
         </>}
       </div>
