@@ -299,6 +299,22 @@ const bg:Record<string,string>={
   "Full name is required.":"Името е задължително.",
   "Profile and password updated.":"Профилът и паролата са обновени.",
   "Profile updated.":"Профилът е обновен.",
+  "Change your temporary password":"Сменете временната си парола",
+  "For security, you must choose your own password before continuing to Building Community.":"За сигурност трябва да изберете собствена парола, преди да продължите към Building Community.",
+  "Set New Password":"Задай нова парола",
+  "Password changed successfully. Welcome to Building Community.":"Паролата е сменена успешно. Добре дошли в Building Community.",
+  "Current Customers":"Текущи клиенти",
+  "Removing a customer permanently removes its buildings and related operational data.":"Премахването на клиент изтрива завинаги неговите сгради и свързаните оперативни данни.",
+  "Refresh":"Обнови",
+  "No customer accounts found.":"Няма намерени клиентски профили.",
+  "Remove Customer":"Премахни клиент",
+  "This permanently removes the customer, its buildings, apartments, notices, issues, fee records, invitations and accounts that are no longer used elsewhere.":"Това изтрива завинаги клиента, неговите сгради, апартаменти, съобщения, сигнали, записи за такси, покани и профили, които не се използват другаде.",
+  "This action cannot be undone.":"Това действие не може да бъде отменено.",
+  "Type the company name to confirm":"Въведете името на компанията за потвърждение",
+  "Permanently Remove Customer":"Премахни клиента завинаги",
+  "Removing…":"Премахване…",
+  "Type the company name exactly to confirm deletion.":"Въведете точно името на компанията, за да потвърдите изтриването.",
+  "Customer and associated Building Community data removed.":"Клиентът и свързаните данни в Building Community са премахнати.",
 };
 
 export function useLanguage(){
