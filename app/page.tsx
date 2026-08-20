@@ -82,6 +82,12 @@ export default function Home(){
   const[tenantDetails,setTenantDetails]=useState<any>(null);
   const[showTenantManager,setShowTenantManager]=useState(false);
   const[notificationsSeen,setNotificationsSeen]=useState(false);
+  const[tenantFeeNotifications,setTenantFeeNotifications]=useState<any[]>([]);
+  const[showFeePayment,setShowFeePayment]=useState(false);
+  const[paymentDetails,setPaymentDetails]=useState<any>(null);
+  const[companyIban,setCompanyIban]=useState("");
+  const[companyPaymentNote,setCompanyPaymentNote]=useState("");
+  const[companyPaymentName,setCompanyPaymentName]=useState("");
   const[managerNotificationsSeen,setManagerNotificationsSeen]=useState(false);
   const[showNotificationSettings,setShowNotificationSettings]=useState(false);
   const[notificationSaving,setNotificationSaving]=useState(false);
@@ -373,6 +379,7 @@ export default function Home(){
     setConfirmAccountPassword("");
     setError("");setMsg("");
     setShowAccountSettings(true);
+    if(role!=="tenant"&&managerData?.memberRole==="company_admin")loadCompanyPaymentSettings();
   }
 
   async function saveAccountSettings(){
@@ -392,6 +399,10 @@ export default function Home(){
       const {error:flagError}=await s.from("profiles").update({must_change_password:false,updated_at:new Date().toISOString()}).eq("id",session.user.id);
       if(flagError){setSavingAccount(false);setError(flagError.message);return}
       setMustChangePassword(false);
+    }
+    if(role!=="tenant"&&managerData?.memberRole==="company_admin"){
+      const paymentOk=await saveCompanyPaymentSettings();
+      if(!paymentOk){setSavingAccount(false);return}
     }
     setSavingAccount(false);
     setMsg(newAccountPassword?t("Profile and password updated."):t("Profile updated."));
@@ -414,6 +425,39 @@ export default function Home(){
     setMustChangePassword(false);
     setMsg(t("Password changed successfully. Welcome to Building Community."));
     await bootstrap(session.user.id);
+  }
+
+  async function loadTenantPaymentDetails(buildingId:string){
+    const {data,error}=await s.rpc("get_company_payment_details",{p_building_id:buildingId});
+    if(error){console.warn("payment details",error.message);return}
+    setPaymentDetails(data?.[0]||null);
+  }
+
+  async function loadTenantFeeNotifications(uid:string){
+    const {data,error}=await s.from("tenant_notifications").select("*").eq("tenant_id",uid).order("created_at",{ascending:false}).limit(30);
+    if(error){console.warn("fee notifications",error.message);return}
+    setTenantFeeNotifications(data||[]);
+  }
+
+  async function markFeeNotificationsRead(){
+    if(!session||tenantFeeNotifications.length===0)return;
+    const unread=tenantFeeNotifications.filter((n:any)=>!n.read_at).map((n:any)=>n.id);
+    if(unread.length)await s.from("tenant_notifications").update({read_at:new Date().toISOString()}).in("id",unread);
+    setTenantFeeNotifications((prev:any[])=>prev.map(n=>({...n,read_at:n.read_at||new Date().toISOString()})));
+  }
+
+  async function loadCompanyPaymentSettings(){
+    if(managerData?.memberRole!=="company_admin")return;
+    const {data,error}=await s.rpc("get_my_company_payment_details");
+    if(error){console.warn("company payment settings",error.message);return}
+    const row=data?.[0];
+    if(row){setCompanyPaymentName(row.company_name||"");setCompanyIban(row.iban||"");setCompanyPaymentNote(row.payment_note||"")}
+  }
+
+  async function saveCompanyPaymentSettings(){
+    const {error}=await s.rpc("set_company_payment_details",{p_iban:companyIban,p_payment_note:companyPaymentNote||null});
+    if(error){setError(error.message);return false}
+    return true;
   }
 
   function notificationDeviceLabel(){
@@ -609,6 +653,7 @@ export default function Home(){
     const latest=announcements[0]?.id||"none";
     localStorage.setItem(notificationSeenKey(tenantData.building.id,session.user.id),latest);
     setNotificationsSeen(true);
+    markFeeNotificationsRead();
     document.getElementById("tenantNotifications")?.scrollIntoView({behavior:"smooth",block:"start"});
   }
 
@@ -635,6 +680,7 @@ export default function Home(){
     if(!at){setError("No active apartment is linked to this tenant.");return}
     const apt:any=at.apartments;
     setTenantData({profile,apartment:apt,building:apt.buildings});
+    await Promise.all([loadTenantPaymentDetails(apt.buildings.id),loadTenantFeeNotifications(uid)]);
 
     const {data:i}=await s.from("issues").select("*").eq("tenant_id",uid).order("created_at",{ascending:false});
     setIssues(i||[]);
@@ -1259,6 +1305,13 @@ export default function Home(){
     <input type="password" autoComplete="new-password" value={newAccountPassword} onChange={e=>setNewAccountPassword(e.target.value)} placeholder={t("Minimum 8 characters")}/>
     <label>{t("Confirm new password")}</label>
     <input type="password" autoComplete="new-password" value={confirmAccountPassword} onChange={e=>setConfirmAccountPassword(e.target.value)}/>
+    {role!=="tenant"&&managerData?.memberRole==="company_admin"&&<div className="teamInviteBox">
+      <h3>💳 {t("Tenant Payment Details")}</h3>
+      <div className="muted">{t("These details are shown to tenants when they tap their monthly fee.")}</div>
+      <label>{t("Company")}</label><input value={companyPaymentName} disabled/>
+      <label>IBAN</label><input value={companyIban} onChange={e=>setCompanyIban(e.target.value.toUpperCase())} placeholder="BG00 BANK 0000 0000 0000 00"/>
+      <label>{t("Payment note")}</label><textarea value={companyPaymentNote} onChange={e=>setCompanyPaymentNote(e.target.value)} placeholder={t("Example: Include apartment number in payment reference")}/>
+    </div>}
     <button className="primary full" disabled={savingAccount} onClick={saveAccountSettings}>{savingAccount?t("Saving…"):t("Save Account Settings")}</button>
   </div></div>;
 
@@ -1351,7 +1404,7 @@ export default function Home(){
           <button className="bellButton" onClick={openAccountSettings} aria-label={t("Account Settings")}>👤</button>
           <button className="bellButton" onClick={()=>setShowNotificationSettings(true)} aria-label={t("Notification Settings")}>⚙️</button>
           <button className="bellButton" onClick={markNotificationsSeen} aria-label="Notifications">
-            🔔{announcements.length>0&&!notificationsSeen&&<span className="bellDot"></span>}
+            🔔{((announcements.length>0&&!notificationsSeen)||tenantFeeNotifications.some((n:any)=>!n.read_at))&&<span className="bellDot"></span>}
           </button>
           <button className="danger" onClick={()=>s.auth.signOut()}>{t("Sign out")}</button>
         </div>
@@ -1422,15 +1475,18 @@ export default function Home(){
       </div>
 
       <div className="grid2">
-        <div className={`card monthlyFeeCard ${dueInfo.glow}`}><div className="row"><div className="muted">{t("Monthly fee")}</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">{t("Due")}: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"}):"—"}</div></div>
+        <button className={`card monthlyFeeCard ${dueInfo.glow}`} style={{width:"100%",textAlign:"left"}} onClick={()=>setShowFeePayment(true)} id="feePayment"><div className="row"><div className="muted">{t("Monthly fee")}</div>{dueInfo.label&&<span className="feeAlertLabel">{dueInfo.label}</span>}</div><div className="stat">€{Number(tenantData.apartment.monthly_fee||0).toFixed(2)}</div><div className="muted">{t("Due")}: {dueInfo.dueDate?dueInfo.dueDate.toLocaleDateString(dateLocale,{day:"numeric",month:"long",year:"numeric"}):"—"} • {t("Tap for payment details")}</div></button>
       </div>
 
       <div className="card"><div className="row"><h2>{t("My Active Issues")}</h2><span className="tag">{issues.filter(i=>i.status!=="resolved").length}</span></div>
         {issues.filter(i=>i.status!=="resolved").length===0?<p>{t("No active issues.")}</p>:issues.filter(i=>i.status!=="resolved").map(i=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?`🔴 ${t("Bigger issue")}`:`🟡 ${t("Small discomfort")}`}</b><span className="tag">{uiStatus(String(i.status))}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}</div>)}
       </div>
 
-      <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 {t("Notifications")}</h2><span className="tag">{announcements.length}</span></div>
-        {announcements.length===0?<p>{t("No building notices yet.")}</p>:announcements.map(n=><div className="issue noticeTenantCard" key={n.id}>
+      <div className="card" id="tenantNotifications"><div className="row"><h2>🔔 {t("Notifications")}</h2><span className="tag">{announcements.length+tenantFeeNotifications.length}</span></div>
+        {tenantFeeNotifications.map((n:any)=><button className="issue noticeTenantCard" style={{width:"100%",textAlign:"left"}} key={n.id} onClick={()=>{setShowFeePayment(true);if(!n.read_at){s.from("tenant_notifications").update({read_at:new Date().toISOString()}).eq("id",n.id);setTenantFeeNotifications((prev:any[])=>prev.map(x=>x.id===n.id?{...x,read_at:new Date().toISOString()}:x))}}}>
+          <div className="row"><b>💳 {t(n.title)}</b>{!n.read_at&&<span className="feeAlertLabel">{t("New")}</span>}</div><p>{n.message}</p><div className="muted">{new Date(n.created_at).toLocaleString(dateLocale)}</div>
+        </button>)}
+        {announcements.length===0&&tenantFeeNotifications.length===0?<p>{t("No notifications yet.")}</p>:announcements.map(n=><div className="issue noticeTenantCard" key={n.id}>
           <div className="row"><b>{noticeIcon(n.type)} {n.title}</b><span className="tag">{t(n.type==="planned_work"?"Planned works":n.type==="important"?"Important notice":"General announcement")}</span></div>
           <p>{n.message}</p>
           {(n.starts_at||n.ends_at)&&<div className="noticeSchedule">
@@ -1440,6 +1496,18 @@ export default function Home(){
         </div>)}
       </div>
 
+      {showFeePayment&&<div className="modal"><div className="modalcard">
+        <div className="row"><div><h2>💳 {t("Payment Details")}</h2><div className="muted">{t("Monthly fee payment information")}</div></div><button className="secondary compactButton" onClick={()=>setShowFeePayment(false)}>✕</button></div>
+        <div className="teamInviteBox">
+          <div className="muted">{t("Amount")}</div><div className="stat">€{Number(latestFee?.amount||tenantData.apartment.monthly_fee||0).toFixed(2)}</div>
+          <div className="muted">{t("Company")}</div><b>{paymentDetails?.company_name||t("Not configured")}</b>
+          <div className="muted">IBAN</div><div className="row"><b style={{wordBreak:"break-all"}}>{paymentDetails?.iban||t("Not configured")}</b>{paymentDetails?.iban&&<button className="secondary" onClick={()=>navigator.clipboard.writeText(paymentDetails.iban)}>{t("Copy")}</button>}</div>
+          <div className="muted">{t("Payment reference")}</div><b>{t("Apartment")} {tenantData.apartment.apartment_number}</b>
+          {paymentDetails?.payment_note&&<><div className="muted">{t("Additional instructions")}</div><p>{paymentDetails.payment_note}</p></>}
+        </div>
+        {!paymentDetails?.iban&&<div className="notice error">{t("The management company has not added an IBAN yet.")}</div>}
+        <button className="secondary full" onClick={()=>setShowFeePayment(false)}>{t("Close")}</button>
+      </div></div>}
       {accountSettingsModal}
       {notificationSettingsModal}
       {showReport&&<div className="modal"><div className="modalcard"><h2>{t("Report an issue")}</h2>
