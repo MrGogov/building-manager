@@ -392,3 +392,165 @@ html[data-theme="dark"] .managerSidebarBrand{border-color:#414141}
   html[data-theme="dark"] .managerSidebar .managerTabActive{background:#3a403c;color:#fff}
   .managerContent>.buildingSelectorCard{margin-top:16px}
 }
+
+
+/* Final dark-mode contrast pass for manager/admin screens */
+html[data-theme="dark"] .noticeTabs,
+html[data-theme="dark"] .apartmentInnerTabs{
+  background:#242424;
+  border-color:#3f3f3f;
+}
+html[data-theme="dark"] .noticeTab,
+html[data-theme="dark"] .apartmentInnerTab{
+  color:#aeb8b2;
+  background:transparent;
+}
+html[data-theme="dark"] .noticeTab:hover,
+html[data-theme="dark"] .apartmentInnerTab:hover{
+  background:#323632;
+  color:#f3f3f3;
+}
+html[data-theme="dark"] .noticeTabActive,
+html[data-theme="dark"] .apartmentInnerTabActive{
+  background:#3a3f3b;
+  color:#f5f5f5;
+  box-shadow:none;
+  border-bottom-color:#78b77b;
+}
+
+html[data-theme="dark"] .apartmentSummaryGrid > div,
+html[data-theme="dark"] .apartmentSummaryCard,
+html[data-theme="dark"] .summaryTile,
+html[data-theme="dark"] .metricCard,
+html[data-theme="dark"] .overviewTile{
+  background:#363636 !important;
+  color:#f2f2f2 !important;
+  border-color:#4c4c4c !important;
+}
+html[data-theme="dark"] .apartmentSummaryGrid .muted,
+html[data-theme="dark"] .apartmentSummaryCard .muted,
+html[data-theme="dark"] .summaryTile .muted,
+html[data-theme="dark"] .metricCard .muted,
+html[data-theme="dark"] .overviewTile .muted{
+  color:#b9b9b9 !important;
+}
+
+html[data-theme="dark"] .apartmentSummaryGrid b,
+html[data-theme="dark"] .apartmentSummaryCard b,
+html[data-theme="dark"] .summaryTile b,
+html[data-theme="dark"] .metricCard b,
+html[data-theme="dark"] .overviewTile b{
+  color:#f3f3f3;
+}
+
+html[data-theme="dark"] .sectionToggleHeader{
+  color:#f2f2f2;
+}
+html[data-theme="dark"] .sectionToggleHeader:hover{
+  background:#303030;
+}
+html[data-theme="dark"] .collapsibleSectionBody{
+  color:#f2f2f2;
+}
+
+html[data-theme="dark"] .noticeComposer,
+html[data-theme="dark"] .noticeForm,
+html[data-theme="dark"] .noticeEditor,
+html[data-theme="dark"] .apartmentOverviewPanel{
+  background:#2b2b2b;
+  border-color:#444;
+  color:#f2f2f2;
+}
+
+html[data-theme="dark"] .noticeSchedule,
+html[data-theme="dark"] .noticeTenantCard{
+  background:#343434;
+  border-color:#494949;
+  color:#f1f1f1;
+}
+
+html[data-theme="dark"] .feeSettingsBox,
+html[data-theme="dark"] .feeHistoryBox,
+html[data-theme="dark"] .tenantSummaryBox{
+  background:#353535;
+  border-color:#4b4b4b;
+  color:#f2f2f2;
+}
+
+html[data-theme="dark"] .managerContent button.card{
+  background:#2b2b2b;
+  color:#f3f3f3;
+  border-color:#444;
+}
+
+html[data-theme="dark"] .managerContent .card .card,
+html[data-theme="dark"] .managerContent .card .issue,
+html[data-theme="dark"] .managerContent .card .apt{
+  background:transparent;
+  color:#f2f2f2;
+}
+
+html[data-theme="dark"] .managerContent .card input,
+html[data-theme="dark"] .managerContent .card textarea,
+html[data-theme="dark"] .managerContent .card select{
+  background:#303030;
+  color:#f4f4f4;
+  border-color:#4b4b4b;
+}
+
+html[data-theme="dark"] .managerContent .card input:focus,
+html[data-theme="dark"] .managerContent .card textarea:focus,
+html[data-theme="dark"] .managerContent .card select:focus{
+  border-color:#78b77b;
+  outline:1px solid #78b77b;
+}
+
+html[data-theme="dark"] .managerContent .primary{
+  background:#78b77b;
+  color:#fff;
+}
+html[data-theme="dark"] .managerContent .secondary{
+  background:#343a36;
+  color:#e7eee9;
+}
+html[data-theme="dark"] .managerContent .secondary:hover{
+  background:#3e4640;
+}
+
+html[data-theme="dark"] .managerContent .feeBig,
+html[data-theme="dark"] .managerContent .stat{
+  color:#f1f1f1;
+}
+
+/* Specifically prevent inherited white backgrounds inside apartment overview */
+html[data-theme="dark"] #apartmentOverviewCard > div > .grid2 > div,
+html[data-theme="dark"] #apartmentOverviewCard .grid2 > .card{
+  background:#363636 !important;
+  color:#f2f2f2 !important;
+  border-color:#4d4d4d !important;
+}
+
+/* Better readability for vacant/empty cards and history tabs */
+html[data-theme="dark"] #apartmentOverviewCard .tag{
+  background:#3b443e;
+  color:#e7eee9;
+}
+html[data-theme="dark"] #apartmentOverviewCard .feePaid{
+  background:#2d4734;
+  color:#bde9c6;
+}
+html[data-theme="dark"] #apartmentOverviewCard .feePending{
+  background:#4a432e;
+  color:#ffe6a0;
+}
+html[data-theme="dark"] #apartmentOverviewCard .feeOverdue{
+  background:#4a3030;
+  color:#ffc0bc;
+}
+
+/* Notice tabs: active tab should not become bright white */
+html[data-theme="dark"] .noticeTabs .noticeTabActive,
+html[data-theme="dark"] .apartmentInnerTabs .apartmentInnerTabActive{
+  background:#373d39 !important;
+  color:#f2f2f2 !important;
+}
