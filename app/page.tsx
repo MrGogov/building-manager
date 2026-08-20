@@ -809,7 +809,7 @@ export default function Home(){
       </div>}
 
       {showTenantManager&&<div className="tenantManagerSection">
-        <div className="row tenantManagerHeading"><div><h3>Tenant Management</h3><div className="muted">Manage the current tenant or invitation for this apartment.</div></div><button className="secondary" onClick={()=>setShowTenantManager(false)}>Hide</button></div>
+        <div className="tenantManagerHeading"><h3>Tenant Management</h3><div className="muted">Manage the current tenant or invitation for this apartment.</div></div>
         {tenantDetails?<>
           <div className="tenantManagementCard">
             <div className="tenantIdentity">
