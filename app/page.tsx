@@ -32,6 +32,7 @@ export default function Home(){
 
   const[showReport,setShowReport]=useState(false);
   const[issueFilter,setIssueFilter]=useState<"all"|"yellow"|"red"|"active"|"resolved">("active");
+  const[issueApartmentFocus,setIssueApartmentFocus]=useState<string|null>(null);
   const[managerTab,setManagerTab]=useState<"dashboard"|"fees">("dashboard");
   const[noticeTab,setNoticeTab]=useState<"create"|"pending"|"completed">("create");
   const[apartmentOverviewOpen,setApartmentOverviewOpen]=useState(false);
@@ -224,6 +225,21 @@ export default function Home(){
   function openApartmentFromStatus(apartmentId:string){
     const a=managerData?.apartments?.find((x:any)=>x.id===apartmentId);
     if(!a)return;
+
+    const apartmentActiveIssues=managerIssues.filter((i:any)=>i.apartment_id===apartmentId&&i.status!=="resolved");
+
+    if(apartmentActiveIssues.length>0){
+      const hasRed=apartmentActiveIssues.some((i:any)=>i.severity==="red");
+      const hasYellow=apartmentActiveIssues.some((i:any)=>i.severity==="yellow");
+      setIssueApartmentFocus(apartmentId);
+      setIssueFilter(hasRed?"red":hasYellow?"yellow":"active");
+      setApartmentOverviewOpen(false);
+      setBuildingNoticesOpen(false);
+      setTimeout(()=>document.getElementById("issueDashboardCard")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
+      return;
+    }
+
+    setIssueApartmentFocus(null);
     setSelectedApartmentId(apartmentId);
     setSelectedApartment(a);
     setFeeAmount(String(a.monthly_fee||0));
@@ -809,23 +825,23 @@ export default function Home(){
       </div>
     </div>
 
-    <div className="card">
+    <div className="card" id="issueDashboardCard">
       <div className="row"><div><h2>{t("Issue Dashboard")}</h2><div className="muted">{managerData?.selectedBuilding?.name} • {t("Active issues are separated from resolved history.")}</div></div><span className="tag">{managerIssues.length}</span></div>
 
       <div className="issueFilterGrid">
-        <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>setIssueFilter("active")}>
+        <button className={`filterTile ${issueFilter==="active"?"filterActive":""}`} onClick={()=>{setIssueApartmentFocus(null);setIssueFilter("active")}}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.status!=="resolved").length}</span>
           <span>{t("Active")}</span>
         </button>
-        <button className={`filterTile yellowTile ${issueFilter==="yellow"?"filterActive":""}`} onClick={()=>setIssueFilter("yellow")}>
+        <button className={`filterTile yellowTile ${issueFilter==="yellow"?"filterActive":""}`} onClick={()=>{setIssueApartmentFocus(null);setIssueFilter("yellow")}}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="yellow"&&i.status!=="resolved").length}</span>
           <span>{t("Yellow")}</span>
         </button>
-        <button className={`filterTile redTile ${issueFilter==="red"?"filterActive":""}`} onClick={()=>setIssueFilter("red")}>
+        <button className={`filterTile redTile ${issueFilter==="red"?"filterActive":""}`} onClick={()=>{setIssueApartmentFocus(null);setIssueFilter("red")}}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.severity==="red"&&i.status!=="resolved").length}</span>
           <span>{t("Red")}</span>
         </button>
-        <button className={`filterTile ${issueFilter==="resolved"?"filterActive":""}`} onClick={()=>setIssueFilter("resolved")}>
+        <button className={`filterTile ${issueFilter==="resolved"?"filterActive":""}`} onClick={()=>{setIssueApartmentFocus(null);setIssueFilter("resolved")}}>
           <span className="filterNumber">{managerIssues.filter((i:any)=>i.status==="resolved").length}</span>
           <span>{t("Resolved")}</span>
         </button>
@@ -833,7 +849,7 @@ export default function Home(){
 
       <div className="filterBar">
         <span className="muted">{t("Showing")}: {uiStatus(issueFilter)}</span>
-        {issueFilter!=="active"&&<button className="linkButton" onClick={()=>setIssueFilter("active")}>{t("Back to active")}</button>}
+        {issueFilter!=="active"&&<button className="linkButton" onClick={()=>{setIssueApartmentFocus(null);setIssueFilter("active")}}>{t("Back to active")}</button>}
       </div>
 
       {filteredManagerIssues.length===0?<p>{t("No issues in this filter.")}</p>:filteredManagerIssues.map((i:any)=><div className="issue" key={i.id}><div className="row"><b>{i.severity==="red"?"🔴":"🟡"} Apartment {managerData.apartments.find((a:any)=>a.id===i.apartment_id)?.apartment_number||"?"}</b><span className="tag">{uiStatus(String(i.status))}</span></div><p>{i.description}</p>{i.callback_requested&&<div className="muted">☎ {t("Callback requested")}</div>}<div className="row actions">{i.status==="submitted"&&<button className="secondary" onClick={()=>updateIssue(i.id,"acknowledged")}>{t("Acknowledge")}</button>}{i.status!=="resolved"&&<button className="secondary" onClick={()=>updateIssue(i.id,"in_progress")}>{t("In Progress")}</button>}{i.status!=="resolved"&&<button className="primary" onClick={()=>updateIssue(i.id,"resolved")}>{t("Resolve")}</button>}</div></div>)}
