@@ -1963,8 +1963,8 @@ export default function Home(){
           const notices=(supportWorkspace.announcements||[]).filter((x:any)=>x.building_id===supportBuildingId);
           const fees=(supportWorkspace.fees||[]).filter((x:any)=>x.building_id===supportBuildingId);
           const tenancy=(supportWorkspace.tenancies||[]).filter((t:any)=>aps.some((a:any)=>a.id===t.apartment_id)&&!t.ended_at);
-          const profiles=new Map((supportWorkspace.tenant_profiles||[]).map((p:any)=>[p.id,p]));
-          const aptMap=new Map(aps.map((a:any)=>[a.id,a]));
+          const profiles=new Map<string,any>((supportWorkspace.tenant_profiles||[]).map((p:any)=>[p.id,p]));
+          const aptMap=new Map<string,any>(aps.map((a:any)=>[a.id,a]));
           if(supportTab==="overview")return <div className="card"><h3>{b?.name}</h3><p className="muted">{b?.address}{b?.city?` • ${b.city}`:""}</p><div className="teamBuildingChips"><span className="tag">🏠 {aps.length} {t("apartments")}</span><span className="tag">👥 {tenancy.length} {t("active tenants")}</span><span className="tag">🛠️ {issues.filter((i:any)=>i.status!=="resolved").length} {t("open issues")}</span><span className="tag">📣 {notices.filter((n:any)=>!n.completed_at).length} {t("active notices")}</span></div></div>;
           if(supportTab==="issues")return <div className="card">{issues.length===0?<p>{t("No issues found.")}</p>:issues.map((i:any)=><div className="teamMemberRow" key={i.id}><div><b>{i.severity==="red"?"🔴":"🟡"} {t(i.status)}</b><div>{i.description}</div><div className="muted">{t("Apartment")} {aptMap.get(i.apartment_id)?.apartment_number||"?"} • {new Date(i.created_at).toLocaleString(dateLocale)}</div></div></div>)}</div>;
           if(supportTab==="notices")return <div className="card">{notices.length===0?<p>{t("No building notices yet.")}</p>:notices.map((n:any)=><div className="teamMemberRow" key={n.id}><div><b>📣 {n.title}</b><div>{n.message}</div><div className="muted">{n.completed_at?t("Completed"):t("Pending")} • {new Date(n.created_at).toLocaleString(dateLocale)}</div></div></div>)}</div>;
